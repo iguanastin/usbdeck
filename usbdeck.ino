@@ -11,9 +11,12 @@
 void(* resetTeensy) (void) = 0;
 
 
+const char* configFilename = "config.json";
+
 LittleFS_Program fs;
 
 HWDefinition hw;
+
 
 void setup() {
   
@@ -25,9 +28,54 @@ void setup() {
   waitForSerial();
   Serial.println("Started serial!");
 
-  fs.begin(65536); // 65536 bytes is minimum amount
-  File cfgFile = fs.open("config.json", FILE_READ);
+  if (!fs.begin(100000)) { // 65536 bytes is minimum amount
+    while(true) {
+      Serial.println("FAILED TO START LittleFS");
+      delay(5000);
+    }
+  }
 
+  File cfgFile = fs.open(configFilename, FILE_READ);
+  readConfigFromFile(cfgFile);
+  cfgFile.close();
+
+  digitalWrite(LED_BUILTIN, LOW);
+
+}
+
+void loop() {
+
+  // Handle inputs?
+
+  // Check for serial data?
+  int bufferLen = 0;
+  char buffer[128];
+  processSerial(&serialMessageHandler, buffer, bufferLen);
+
+  Serial.write(buffer, bufferLen); // Echo non-message serial back to the host
+  
+}
+
+void serialMessageHandler(const SerialMessage& msg) {
+  // Handle request for the current config file
+  if (msg.type == SERIAL_REQUEST_CONFIG) {
+    File cfgFile = fs.open(configFilename, FILE_READ);
+    if (!cfgFile) {
+      const char* text = "No config file";
+      sendSerialMessage(SERIAL_RESPOND_ERROR, strlen(text), msg.id, text);
+      return;
+    }
+
+    int len = cfgFile.size();
+    char data[len];
+    cfgFile.readBytes(data, len);
+    cfgFile.close();
+
+    sendSerialMessage(SERIAL_RESPOND_CONFIG, len, msg.id, data);
+  }
+}
+
+void readConfigFromFile(File& cfgFile) {
   if (cfgFile) {
     digitalWrite(LED_BUILTIN, LOW);
 
@@ -52,29 +100,4 @@ void setup() {
   } else {
     Serial.println("Failed to load config file");
   }
-
-}
-
-void loop() {
-
-  // Handle inputs?
-
-  // Check for serial data?
-  while (Serial.available()) {
-    int read = Serial.read();
-    if (read == '@') Serial.println("You sent an @!");
-    if (read == '~') {
-      Serial.println("Restarting Teensy, this may take a few seconds...");
-      Serial.send_now();
-      resetTeensy();
-    }
-    if (read == '!') {
-      Keyboard.print("test");
-    }
-    if (read == SERIAL_MESSAGE_START) {
-      auto msg = receiveSerialMessage();
-      // TODO do something with the message
-    }
-  }
-  
 }

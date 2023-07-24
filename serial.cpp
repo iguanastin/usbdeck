@@ -1,31 +1,70 @@
 #include "serial.hpp"
 
-bool sendSerialRequest(const String& msg) {
+
+char requestIDCounter = 1; // Need to upgrade this to int if a lot of messages are sent
+
+
+// Pass 0 as outputBuffer to ignore non-message serial communication
+bool processSerial(void (*msgHandler)(const SerialMessage&), char* outputBuffer, int& bufferLen) {
   if (!Serial) return false;
 
-  Serial.write(SERIAL_MESSAGE_START);
-
-  char lenBytes[4];
-  splitIntToBytes(msg.length() * sizeof(char), lenBytes);
-  Serial.write(lenBytes, 4);
-
-  Serial.print(msg);
+  while (Serial.available()) {
+    char read = Serial.read();
+    if (read == SERIAL_MESSAGE_START) {
+      SerialMessage msg;
+      receiveSerialMessageHeader(msg);
+      if (msg.length > 0) msg.data = new char[msg.length]();
+      msgHandler(msg);
+      if (msg.length > 0) delete [] msg.data;
+    } else if (outputBuffer) {
+      // Write byte to the standard serial buffer (not a message byte)
+      outputBuffer[bufferLen++] = read;
+    }
+  }
 
   return true;
 }
 
-String receiveSerialMessage() {
+int sendSerialMessage(const char type, const int len, const char *msg) {
+  return sendSerialMessage(type, len, requestIDCounter++, msg);
+}
+
+int sendSerialMessage(const char type, const int len, const char id, const char* msg) {
+  if (!Serial) return 0;
+  if (requestIDCounter == 0) requestIDCounter++;
+
+  // Send start byte
+  Serial.write(SERIAL_MESSAGE_START);
+
+  // Send type byte
+  Serial.write(type);
+  // Send id byte
+  Serial.write(id);
+
+  // Send 4 length bytes
+  char lenBytes[4];
+  splitIntToBytes(len * sizeof(char), lenBytes);
+  Serial.write(lenBytes, 4);
+
+  // Send message bytes
+  if (len > 0) Serial.write(msg, len);
+
+  return id;
+}
+
+void receiveSerialMessageHeader(SerialMessage& msg) {
+  msg.type = Serial.read();
+  msg.id = Serial.read();
+
   char lenBytes[4];
   Serial.readBytes(lenBytes, 4);
-  const int length = joinBytesToInt(lenBytes);
+  msg.length = joinBytesToInt(lenBytes);
+}
 
-  char result[length + 1];
-  for (int i = 0; i < length; i++) {
-    result[i] = Serial.read();
+void receiveSerialMessageData(SerialMessage& msg) {
+  for (int i = 0; i < msg.length; i++) {
+    msg.data[i] = Serial.read();
   }
-  result[length] = '\0';
-  
-  return String(result);
 }
 
 void waitForSerial() {
