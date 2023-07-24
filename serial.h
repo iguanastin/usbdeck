@@ -1,7 +1,6 @@
 #ifndef serial_h
 #define serial_h
 
-#include "WString.h"
 #include <Arduino.h>
 
 

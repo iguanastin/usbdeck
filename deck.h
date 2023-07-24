@@ -1,7 +1,6 @@
 #ifndef deck_h
 #define deck_h
 
-#include "core_pins.h"
 #include <ArduinoJson.h>
 
 class HWComponent {
