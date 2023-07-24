@@ -11,6 +11,11 @@
 #define SERIAL_RESPOND_CONFIG 3
 #define SERIAL_RESPOND_EMPTY 4
 #define SERIAL_RESPOND_ERROR 5
+#define SERIAL_RESPOND_OK 6
+#define SERIAL_CHANGE_CONFIG 7
+#define SERIAL_REQUEST_RESET 8
+
+#define COMMAND_CHAR '~'
 
 
 class SerialMessage {
@@ -24,10 +29,12 @@ class SerialMessage {
 };
 
 
-bool processSerial(void (*handler)(const SerialMessage&), char* outputBuffer, int& bufferLen);
+bool processSerial(void (*handler)(const SerialMessage&), char* outputBuffer, int& bufferLen, const int bufferSize);
 
 int sendSerialMessage(const char type, const int len, const char* msg);
-int sendSerialMessage(const char type, const int len, const char id, const char* msg);
+int sendSerialMessage(const char type, const char id, const int len, const char* msg);
+int sendSerialMessage(const char type, const char id);
+int sendSerialMessage(const char type);
 
 void receiveSerialMessageHeader(SerialMessage& msg);
 void receiveSerialMessageData(SerialMessage& msg);

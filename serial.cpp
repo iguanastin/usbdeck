@@ -5,12 +5,13 @@ char requestIDCounter = 1; // Need to upgrade this to int if a lot of messages a
 
 
 // Pass 0 as outputBuffer to ignore non-message serial communication
-bool processSerial(void (*msgHandler)(const SerialMessage&), char* outputBuffer, int& bufferLen) {
+bool processSerial(void (*msgHandler)(const SerialMessage&), char* outputBuffer, int& bufferLen, const int bufferSize) {
   if (!Serial) return false;
 
   while (Serial.available()) {
-    char read = Serial.read();
+    char read = Serial.peek();
     if (read == SERIAL_MESSAGE_START) {
+      Serial.read(); // Pop the byte, it's important
       SerialMessage msg;
       receiveSerialMessageHeader(msg);
       if (msg.length > 0) msg.data = new char[msg.length]();
@@ -18,18 +19,32 @@ bool processSerial(void (*msgHandler)(const SerialMessage&), char* outputBuffer,
       if (msg.length > 0) delete [] msg.data;
     } else if (outputBuffer) {
       // Write byte to the standard serial buffer (not a message byte)
-      outputBuffer[bufferLen++] = read;
+      if (bufferLen < bufferSize) {
+        Serial.read(); // Pop the byte, we're using it
+        outputBuffer[bufferLen++] = read;
+      } else {
+        return true;
+      }
     }
   }
 
   return true;
 }
 
-int sendSerialMessage(const char type, const int len, const char *msg) {
-  return sendSerialMessage(type, len, requestIDCounter++, msg);
+
+int sendSerialMessage(const char type, const char id) {
+  return sendSerialMessage(type, id, 0, (const char*) 0);
 }
 
-int sendSerialMessage(const char type, const int len, const char id, const char* msg) {
+int sendSerialMessage(const char type) {
+  return sendSerialMessage(type, 0, (const char*) 0);
+}
+
+int sendSerialMessage(const char type, const int len, const char *msg) {
+  return sendSerialMessage(type, requestIDCounter++, len, msg);
+}
+
+int sendSerialMessage(const char type, const char id, const int len, const char* msg) {
   if (!Serial) return 0;
   if (requestIDCounter == 0) requestIDCounter++;
 
