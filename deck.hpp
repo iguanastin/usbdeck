@@ -8,19 +8,19 @@ class HWComponent {
     int pin;
   protected:
     HWComponent(const JsonObject& json);
-    HWComponent();
+    HWComponent() {}
 };
 
 class HWOutput : public HWComponent {
   protected:
     HWOutput(const JsonObject& json);
-    HWOutput();
+    HWOutput() {}
 };
 
 class HWLEDLight : public HWOutput {
   public:
     HWLEDLight(const JsonObject& json);
-    HWLEDLight();
+    HWLEDLight() {}
     void init();
 };
 
@@ -29,13 +29,13 @@ class HWInput : public HWComponent {
     int type;
   protected:
     HWInput(const JsonObject& json);
-    HWInput();
+    HWInput() {}
 };
 
 class HWButton : public HWInput {
   public:
     HWButton(const JsonObject& json);
-    HWButton();
+    HWButton() {}
     int detect;
     int debounce;
     void init();
@@ -44,7 +44,7 @@ class HWButton : public HWInput {
 class HWEncoder : public HWInput {
   public:
     HWEncoder(const JsonObject& json);
-    HWEncoder();
+    HWEncoder() {}
     int pin2;
     void init();
 };
@@ -52,7 +52,7 @@ class HWEncoder : public HWInput {
 class HWDefinition {
   public:
     HWDefinition(const JsonObject& json);
-    HWDefinition();
+    HWDefinition() {}
     int ledCount = 0;
     int buttonCount = 0;
     int encoderCount = 0;
