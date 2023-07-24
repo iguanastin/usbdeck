@@ -1,4 +1,4 @@
-#include "serial.h"
+#include "serial.hpp"
 
 bool sendSerialRequest(const String& msg) {
   if (!Serial) return false;

@@ -5,8 +5,8 @@
 #include <LittleFS.h>
 // https://github.com/PaulStoffregen/LittleFS
 
-#include "deck.h"
-#include "serial.h"
+#include "serial.hpp"
+#include "deck.hpp"
 
 void(* resetTeensy) (void) = 0;
 

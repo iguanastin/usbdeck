@@ -1,6 +1,4 @@
-#include "core_pins.h"
-#include "deck.h"
-#include <Arduino.h>
+#include "deck.hpp"
 
 HWComponent::HWComponent(const JsonObject& json) {
   pin = json["pin"];
