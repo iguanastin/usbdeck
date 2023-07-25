@@ -1,7 +1,8 @@
 #include "serial.hpp"
 
 
-char requestIDCounter = 1; // Need to upgrade this to int if a lot of messages are sent
+char requestIDCounter = 1;  // Need to upgrade this to int if a lot of messages are sent
+// If both host and device are sending messages with their own id counter, there might be collisions
 
 
 // Pass 0 as outputBuffer to ignore non-message serial communication
@@ -11,16 +12,19 @@ bool processSerial(void (*msgHandler)(const SerialMessage&), char* outputBuffer,
   while (Serial.available()) {
     char read = Serial.peek();
     if (read == SERIAL_MESSAGE_START) {
-      Serial.read(); // Pop the byte, it's important
+      Serial.read();  // Pop the byte, it's important
       SerialMessage msg;
       receiveSerialMessageHeader(msg);
-      if (msg.length > 0) msg.data = new char[msg.length]();
+      if (msg.length > 0) {
+        msg.data = new char[msg.length]();
+        receiveSerialMessageData(msg);
+      }
       msgHandler(msg);
-      if (msg.length > 0) delete [] msg.data;
+      if (msg.length > 0) delete[] msg.data;
     } else if (outputBuffer) {
       // Write byte to the standard serial buffer (not a message byte)
       if (bufferLen < bufferSize) {
-        Serial.read(); // Pop the byte, we're using it
+        Serial.read();  // Pop the byte, we're using it
         outputBuffer[bufferLen++] = read;
       } else {
         return true;
@@ -33,14 +37,14 @@ bool processSerial(void (*msgHandler)(const SerialMessage&), char* outputBuffer,
 
 
 int sendSerialMessage(const char type, const char id) {
-  return sendSerialMessage(type, id, 0, (const char*) 0);
+  return sendSerialMessage(type, id, 0, (const char*)0);
 }
 
 int sendSerialMessage(const char type) {
-  return sendSerialMessage(type, 0, (const char*) 0);
+  return sendSerialMessage(type, 0, (const char*)0);
 }
 
-int sendSerialMessage(const char type, const int len, const char *msg) {
+int sendSerialMessage(const char type, const int len, const char* msg) {
   return sendSerialMessage(type, requestIDCounter++, len, msg);
 }
 
@@ -77,9 +81,7 @@ void receiveSerialMessageHeader(SerialMessage& msg) {
 }
 
 void receiveSerialMessageData(SerialMessage& msg) {
-  for (int i = 0; i < msg.length; i++) {
-    msg.data[i] = Serial.read();
-  }
+  Serial.readBytes(msg.data, msg.length);
 }
 
 void waitForSerial() {

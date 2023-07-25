@@ -1,5 +1,6 @@
 #include "deck.hpp"
 
+
 HWComponent::HWComponent(const JsonObject& json) {
   pin = json["pin"];
 }
