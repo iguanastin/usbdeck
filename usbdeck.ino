@@ -28,12 +28,17 @@ void setup() {
   // Calling Serial.begin is irrelevant for Teensy, as it is initialized before setup is even called.
   // Serial.begin(9600); // Baud rate is ignored for Teensy's serial  over USB
   // waitForSerial();
-  Serial.println("Started serial!");
+  Serial.println("- USBDeck is starting up -");
 
   // Init LittleFS filesystem
-  if (!fs.begin(100000)) { // 65536 bytes is minimum amount
-    Serial.println("FAILED TO START LittleFS");
+  if (!fs.begin(1024*1024)) { // 131072 bytes seems to be required just to initialize LittleFS
+    Serial.println("*** FAILED TO START LittleFS ***");
   }
+  
+  Serial.print(F("LittleFS Used Space: "));
+  Serial.println(fs.usedSize());
+  Serial.print(F("LittleFS Total Space: "));
+  Serial.println(fs.totalSize());
 
   File cfgFile = fs.open(configFilename, FILE_READ);
   if (cfgFile) {
@@ -41,9 +46,11 @@ void setup() {
 
     digitalWrite(LED_BUILTIN, LOW);
   } else {
-    Serial.println("Failed to load config file");
+    Serial.println("*** Failed to load config file ***");
   }
   cfgFile.close();
+
+  Serial.println("- Finished startin USBDeck -");
 
 }
 
@@ -136,7 +143,7 @@ void serialMessageHandler(const SerialMessage& msg) {
     } else {
       sendSerialMessage(SERIAL_RESPOND_OK, msg.id);
       Serial.send_now(); // Make sure the serial message was sent
-      // resetTeensy(); // Reset the device and load the new config
+      resetTeensy(); // Reset the device and load the new config
     }
   }
 
