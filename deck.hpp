@@ -2,6 +2,11 @@
 #define deck_h
 
 #include <ArduinoJson.h>
+#include <Bounce2.h>
+// https://github.com/thomasfredericks/Bounce2#
+#include <Encoder.h>
+// https://github.com/PaulStoffregen/Encoder
+
 
 class HWComponent {
   public:
@@ -21,12 +26,9 @@ class HWLEDLight : public HWOutput {
   public:
     HWLEDLight(const JsonObject& json);
     HWLEDLight() {}
-    void init();
 };
 
 class HWInput : public HWComponent {
-  public:
-    int type;
   protected:
     HWInput(const JsonObject& json);
     HWInput() {}
@@ -36,17 +38,14 @@ class HWButton : public HWInput {
   public:
     HWButton(const JsonObject& json);
     HWButton() {}
-    int detect;
-    int debounce;
-    void init();
+    Bounce2::Button button;
 };
 
 class HWEncoder : public HWInput {
   public:
     HWEncoder(const JsonObject& json);
     HWEncoder() {}
-    int pin2;
-    void init();
+    Encoder* encoder;
 };
 
 class HWDefinition {

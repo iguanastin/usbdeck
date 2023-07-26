@@ -9,38 +9,20 @@ HWOutput::HWOutput(const JsonObject& json) : HWComponent(json) {
 }
 
 HWInput::HWInput(const JsonObject& json) : HWComponent(json) {
-  String input = json["input_type"];
-  if (input.equals("INPUT")) {
-    type = INPUT;
-  } else if (input.equals("INPUT_PULLUP")) {
-    type = INPUT_PULLUP;
-  } else if (input.equals("INPUT_PULLDOWN")) {
-    type = INPUT_PULLDOWN;
-  } else {
-    type = -1;
-  }
 }
 
 HWLEDLight::HWLEDLight(const JsonObject& json) : HWOutput(json) {
-}
-void HWLEDLight::init() {
   pinMode(pin, OUTPUT);
 }
 
 HWButton::HWButton(const JsonObject& json) : HWInput(json) {
-  detect = json["detect"];
-  debounce = json["debounce"];
-}
-void HWButton::init() {
-  pinMode(pin, type);
+  button.setPressedState(json["detect"]);
+  button.attach(pin, INPUT_PULLUP);
+  button.interval(json["debounce"]);
 }
 
 HWEncoder::HWEncoder(const JsonObject& json) : HWInput(json) {
-  pin2 = json["pin2"];
-}
-void HWEncoder::init() {
-  pinMode(pin, type);
-  pinMode(pin2, type);
+  encoder = new Encoder(pin, json["pin2"]);
 }
 
 HWDefinition::HWDefinition(const JsonObject& json) {
@@ -49,8 +31,8 @@ HWDefinition::HWDefinition(const JsonObject& json) {
   for (const JsonObject& j : comps) {  
     String type = j["type"];
     if (type.equals("led")) ledCount++;
-    else if (type.equals("rotaryencoder")) encoderCount++;
-    else if (type.equals("pushbutton")) buttonCount++;
+    else if (type.equals("encoder")) encoderCount++;
+    else if (type.equals("button")) buttonCount++;
   }
 
   leds = new HWLEDLight[ledCount];
@@ -63,17 +45,11 @@ HWDefinition::HWDefinition(const JsonObject& json) {
   for (const JsonObject& j : comps) {
     String type = j["type"];
     if (type.equals("led")) {
-      leds[ledI] = HWLEDLight(j);
-      leds[ledI].init();
-      ledI++;
-    } else if (type.equals("rotaryencoder")) {
-      encoders[encoderI] = HWEncoder(j);
-      encoders[encoderI].init();
-      encoderI++;
-    } else if (type.equals("pushbutton")) {
-      buttons[buttonI] = HWButton(j);
-      buttons[buttonI].init();
-      buttonI++;
+      leds[ledI++] = HWLEDLight(j);
+    } else if (type.equals("encoder")) {
+      encoders[encoderI++] = HWEncoder(j);
+    } else if (type.equals("button")) {
+      buttons[buttonI++] = HWButton(j);
     }
   }
 }

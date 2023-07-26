@@ -1,5 +1,3 @@
-#include <Bounce2.h>
-// https://github.com/thomasfredericks/Bounce2#
 #include <ArduinoJson.h>
 // https://arduinojson.org/
 #include <LittleFS.h>
@@ -62,7 +60,23 @@ void loop() {
   }
 
   // Handle inputs?
+  // Update buttons
+  for (int i = 0; i < hw.buttonCount; i++) {
+    hw.buttons[i].button.update();
+    if (hw.buttons[i].button.pressed()) {
+      // TODO button pressed
+    } else if (hw.buttons[i].button.released()) {
+      // TODO Button released
+    }
+  }
+  for (int i = 0; i < hw.encoderCount; i++) {
+    long delta = hw.encoders[i].encoder->readAndReset();
+    if (delta != 0) {
+      // TODO encoder moved
+    }
+  }
 
+  // Handle serial
   doSerial();
   
 }
@@ -112,6 +126,18 @@ void doSerial() {
         } else {
           Serial.println("No config file/could not delete");
         }
+      } else if (strMatch(buffer + i + 1, "fsstat\n", 7)) {
+        Serial.print(F("FS Used: "));
+        Serial.println(fs.usedSize());
+        Serial.print(F("FS Total: "));
+        Serial.println(fs.totalSize());
+      } else if (strMatch(buffer + i + 1, "hwstat\n", 7)) {
+        Serial.print(F("Buttons: "));
+        Serial.println(hw.buttonCount);
+        Serial.print(F("Encoders: "));
+        Serial.println(hw.encoderCount);
+        Serial.print(F("LEDs: "));
+        Serial.println(hw.ledCount);
       }
     }
   }
