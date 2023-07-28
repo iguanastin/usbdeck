@@ -1,11 +1,10 @@
 #include "serial.hpp"
 
 
-char requestIDCounter = 1;  // Need to upgrade this to int if a lot of messages are sent
 // If both host and device are sending messages with their own id counter, there might be collisions
+char requestIDCounter = 1;  // Need to upgrade this to int if a lot of messages are sent
 
 
-// Pass 0 as outputBuffer to ignore non-message serial communication
 bool processSerial(void (*msgHandler)(const SerialMessage&), char* outputBuffer, int& bufferLen, const int bufferSize) {
   if (!Serial) return false;
 

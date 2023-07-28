@@ -3,6 +3,7 @@
 
 #include <ArduinoJson.h>
 #include "deck.hpp"
+#include <Keyboard.h>
 
 
 class Binding {

@@ -3,6 +3,7 @@
 
 HWComponent::HWComponent(const JsonObject& json) {
   pin = json["pin"];
+  id = json["id"];
 }
 
 HWOutput::HWOutput(const JsonObject& json) : HWComponent(json) {
@@ -16,13 +17,16 @@ HWLEDLight::HWLEDLight(const JsonObject& json) : HWOutput(json) {
 }
 
 HWButton::HWButton(const JsonObject& json) : HWInput(json) {
-  button.setPressedState(json["detect"]);
+  detect = json["detect"];
+  debounce = json["debounce"];
+  button.setPressedState(detect);
+  button.interval(debounce);
   button.attach(pin, INPUT_PULLUP);
-  button.interval(json["debounce"]);
 }
 
 HWEncoder::HWEncoder(const JsonObject& json) : HWInput(json) {
-  encoder = new Encoder(pin, json["pin2"]);
+  pin2 = json["pin2"];
+  encoder = new Encoder(pin, pin2);
 }
 
 HWDefinition::HWDefinition(const JsonObject& json) {
