@@ -23,10 +23,29 @@ HWButton::HWButton(const JsonObject& json) : HWInput(json) {
   button.interval(debounce);
   button.attach(pin, INPUT_PULLUP);
 }
+bool HWButton::update() {
+  if (binding == NULL) return false;
+
+  bool result = button.update();
+  if (button.pressed()) binding->action1->perform();
+  else if (button.released()) binding->action2->perform();
+
+  return result;
+}
 
 HWEncoder::HWEncoder(const JsonObject& json) : HWInput(json) {
   pin2 = json["pin2"];
   encoder = new Encoder(pin, pin2);
+}
+bool HWEncoder::update() {
+  if (binding == NULL) return false;
+
+  long delta = encoder->readAndReset();
+  if (delta < 0) binding->action1->perform();
+  if (delta > 0) binding->action2->perform();
+  lastDelta = delta;
+
+  return delta != 0;
 }
 
 HWDefinition::HWDefinition(const JsonObject& json) {

@@ -6,6 +6,7 @@
 // https://github.com/thomasfredericks/Bounce2#
 #include <Encoder.h>
 // https://github.com/PaulStoffregen/Encoder
+#include "profile.hpp"
 
 
 // Basic definition of a hardware component
@@ -34,6 +35,9 @@ class HWLEDLight : public HWOutput {
 
 // Basic definition of a hardware input component
 class HWInput : public HWComponent {
+  public:
+    Binding* binding = NULL;
+    virtual bool update() { return false; }
   protected:
     HWInput(const JsonObject& json);
     HWInput() {}
@@ -47,6 +51,7 @@ class HWButton : public HWInput {
     int detect;
     int debounce;
     Bounce2::Button button;
+    bool update();
 };
 
 // Rotary encoder
@@ -55,7 +60,9 @@ class HWEncoder : public HWInput {
     HWEncoder(const JsonObject& json);
     HWEncoder() {}
     int pin2;
+    int lastDelta = 0;
     Encoder* encoder;
+    bool update();
 };
 
 // A complete hardware definition of all components

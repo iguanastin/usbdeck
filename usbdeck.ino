@@ -94,28 +94,24 @@ void loop() {
 void updateInputs() {
   // Update buttons
   for (int i = 0; i < hw.buttonCount; i++) {
-    hw.buttons[i].button.update();
-    if (hw.buttons[i].button.pressed()) {
-      if (identMode) {
-        identButton(hw.buttons[i]);
-      } else {
-        // TODO button pressed
-      }
-    } else if (hw.buttons[i].button.released()) {
-      if (!identMode) { // Don't fire normally if in ident mode
-        // TODO Button released
-      }
+    HWButton& btn = hw.buttons[i];
+    Binding* bind = btn.binding;
+
+    if (identMode) btn.binding = NULL; // TODO Probably a terrible way to make the button not perform the bound action when identifying
+    if (btn.update() && identMode) {
+        identButton(btn);
     }
+    if (identMode) btn.binding = bind; // TODO Probably a terrible way to make the button not perform the bound action when identifying
   }
   for (int i = 0; i < hw.encoderCount; i++) {
-    long delta = hw.encoders[i].encoder->readAndReset();
-    if (delta != 0) {
-      if (identMode) {
-        identEncoder(hw.encoders[i], delta);
-      } else {
-        // TODO encoder moved
-      }
+    HWEncoder& enc = hw.encoders[i];
+    Binding* bind = enc.binding;
+
+    if (identMode) enc.binding = NULL; // TODO Probably a terrible way to make the button not perform the bound action when identifying
+    if (enc.update() && identMode) {
+      identEncoder(enc, enc.lastDelta);
     }
+    if (identMode) enc.binding = bind; // TODO Probably a terrible way to make the button not perform the bound action when identifying
   }
 }
 
