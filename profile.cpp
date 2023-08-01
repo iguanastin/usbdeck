@@ -60,7 +60,20 @@ void KeyboardAction::perform() {
   if (print != NULL) {
     Keyboard.print(*print);
   } else {
+    // TODO pressing one button, then pressing another before releasing the first will reset the held keys of the first binding
+    // Probably want to use the individual press and release
+    // Probably also need the action to be updated every loop to deal with necessary delays for instantaneous/hotkeys/multi key actions
+    
+    Keyboard.set_key1(0);
+    Keyboard.set_key2(0);
+    Keyboard.set_key3(0);
+    Keyboard.set_key4(0);
+    Keyboard.set_key5(0);
+    Keyboard.set_key6(0);
+
     Keyboard.set_modifier(mods);
+    Keyboard.send_now(); // Send modifiers first
+    
     Keyboard.set_key1(keys[0]);
     Keyboard.set_key2(keys[1]);
     Keyboard.set_key3(keys[2]);

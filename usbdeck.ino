@@ -99,7 +99,8 @@ void updateInputs() {
 
     if (identMode) btn.binding = NULL; // TODO Probably a terrible way to make the button not perform the bound action when identifying
     if (btn.update() && identMode) {
-        identButton(btn);
+      Serial.println("IDENT");
+      identButton(btn);
     }
     if (identMode) btn.binding = bind; // TODO Probably a terrible way to make the button not perform the bound action when identifying
   }
