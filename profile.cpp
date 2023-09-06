@@ -17,6 +17,13 @@ Profile::Profile(const JsonObject& json) {
   r = json["r"].as<int>();
   g = json["g"].as<int>();
   b = json["b"].as<int>();
+
+  const JsonArray& binds = json["bindings"].as<JsonArray>();
+  bindingCount = binds.size();
+  bindings = new Binding[bindingCount];
+  for (int i = 0; i < bindingCount; i++) {
+    bindings[i] = Binding(binds[i].as<JsonObject>());
+  }
 }
 
 Binding::Binding(const JsonObject& json) {
@@ -86,6 +93,8 @@ void KeyboardAction::perform() {
 }
 
 Action* parseAction(const JsonObject& json) {
+  if (json == NULL) return NULL;
+
   const int type = json["type"];
   if (type == ACTION_MOUSE) return new MouseAction(json);
   if (type == ACTION_KEYBOARD) return new KeyboardAction(json);

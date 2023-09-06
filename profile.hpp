@@ -54,8 +54,8 @@ activations:
 
 */
 
-#define ACTION_MOUSE 0
-#define ACTION_KEYBOARD 1
+#define ACTION_MOUSE 1
+#define ACTION_KEYBOARD 2
 
 
 class Action {
@@ -67,6 +67,7 @@ class Action {
 class Binding {
   public:
     Binding(const JsonObject& json);
+    Binding() {}
     int hwID;
     Action* action1;
     Action* action2;

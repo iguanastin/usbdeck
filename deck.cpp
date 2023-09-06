@@ -16,6 +16,20 @@ HWLEDLight::HWLEDLight(const JsonObject& json) : HWOutput(json) {
   pinMode(pin, OUTPUT);
 }
 
+HWRGBLight::HWRGBLight(const JsonObject& json) : HWOutput(json) {
+  gPin = json["gpin"];
+  bPin = json["bpin"];
+  r = json["r"];
+  g = json["g"];
+  b = json["b"];
+  pinMode(pin, OUTPUT);
+  pinMode(gPin, OUTPUT);
+  pinMode(bPin, OUTPUT);
+  analogWrite(pin, r);
+  analogWrite(gPin, g);
+  analogWrite(bPin, b);
+}
+
 HWButton::HWButton(const JsonObject& json) : HWInput(json) {
   detect = json["detect"];
   debounce = json["debounce"];
@@ -50,21 +64,26 @@ HWDefinition::HWDefinition(const JsonObject& json) {
   for (const JsonObject& j : comps) {  
     String type = j["type"];
     if (type.equals("led")) ledCount++;
+    else if (type.equals("rgbled")) rgbCount++;
     else if (type.equals("encoder")) encoderCount++;
     else if (type.equals("button")) buttonCount++;
   }
 
   leds = new HWLEDLight[ledCount];
+  rgbs = new HWRGBLight[rgbCount];
   encoders = new HWEncoder[encoderCount];
   buttons = new HWButton[buttonCount];
 
   int ledI = 0;
+  int rgbI = 0;
   int encoderI = 0;
   int buttonI = 0;
   for (const JsonObject& j : comps) {
     String type = j["type"];
     if (type.equals("led")) {
       leds[ledI++] = HWLEDLight(j);
+    } else if (type.equals("rgbled")) {
+      rgbs[rgbI++] = HWRGBLight(j);
     } else if (type.equals("encoder")) {
       encoders[encoderI++] = HWEncoder(j);
     } else if (type.equals("button")) {

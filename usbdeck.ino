@@ -7,6 +7,9 @@
 #include "deck.hpp"
 #include "profile.hpp"
 
+#define JSON_DOC_MAX_SIZE 8192 // Probably overkill for most configurations. Really complex ones might need a higher max
+#define LITTLE_FS_SIZE 1048576 // Minimum of 131072 bytes seems to be required just to initialize LittleFS
+
 
 void(* resetTeensy) (void) = 0; // Suspicious software reset that probably doesn't cycle memory and leaks everything instead
 
@@ -20,10 +23,14 @@ bool configLoaded = false; // Is true after a config successfully loads
 
 elapsedMillis errorLedTimer; // LED flash timer for catastrophic errors
 elapsedMillis ledIdentTimer; // LED timer for identifying different LEDs
+elapsedMillis ledRGBIdentTimer;
 elapsedMillis ledIdentFlashTimer; // LED flash timer for identifying different LEDs
 int ledIdentPin = -1; // Current LED pin to flash, or -1 to not flash any
+int ledRIdentPin = -1;
+int ledGIdentPin = -1;
+int ledBIdentPin = -1;
 
-bool identMode = false; // If board is in ident mode, inputs will send an ident command to the configurator instead of performing default config binding actions
+bool identMode = true; // If board is in ident mode, inputs will send an ident command to the configurator instead of performing default config binding actions
 
 
 void setup() {
@@ -37,7 +44,7 @@ void setup() {
   Serial.println(F("- USBDeck is starting up -"));
 
   // Init LittleFS filesystem
-  if (!fs.begin(1024*1024)) { // 131072 bytes seems to be required just to initialize LittleFS
+  if (!fs.begin(LITTLE_FS_SIZE)) {
     Serial.println(F("*** FAILED TO START LittleFS ***"));
   }
 
@@ -76,6 +83,20 @@ void loop() {
     } else if (ledIdentFlashTimer > 250) {
       ledIdentFlashTimer = 0;
       digitalToggle(ledIdentPin);
+    }
+  }
+  if (ledRIdentPin >= 0) {
+    if (ledRGBIdentTimer > 3000) {
+      analogWrite(ledRIdentPin, 0);
+      analogWrite(ledGIdentPin, 0);
+      analogWrite(ledBIdentPin, 0);
+      ledRIdentPin = -1;
+      ledGIdentPin = -1;
+      ledBIdentPin = -1;
+    } else {
+      analogWrite(ledRIdentPin, (int)((sin(ledRGBIdentTimer * 2 / 1000.0) + 1) * 255));
+      analogWrite(ledGIdentPin, (int)((sin(ledRGBIdentTimer * 2 / 1000.0 + 1.05) + 1) * 255));
+      analogWrite(ledBIdentPin, (int)((sin(ledRGBIdentTimer * 2 / 1000.0 + 2.1) + 1) * 255));
     }
   }
 
@@ -257,6 +278,15 @@ void serialMessageHandler(const SerialMessage& msg) {
 
     sendSerialMessage(SERIAL_RESPOND_OK, msg.id);
   }
+
+  else if (msg.type == SERIAL_IDENT_RGB) {
+    ledRIdentPin = joinBytesToInt(msg.data);
+    ledGIdentPin = joinBytesToInt(msg.data+4);
+    ledBIdentPin = joinBytesToInt(msg.data+8);
+    ledRGBIdentTimer = 0;
+
+    sendSerialMessage(SERIAL_RESPOND_OK, msg.id);
+  }
 }
 
 // Read config file and apply
@@ -281,7 +311,7 @@ bool readConfigFromFile(File& cfgFile) {
   cfgFile.close();
 
   // Parse JSON config
-  DynamicJsonDocument doc(1024);
+  DynamicJsonDocument doc(JSON_DOC_MAX_SIZE);
   DeserializationError error = deserializeJson(doc, jsonStr, size);
   if (error) {
     Serial.print(F("deserializeJson() failed: "));

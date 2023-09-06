@@ -33,6 +33,18 @@ class HWLEDLight : public HWOutput {
     HWLEDLight() {}
 };
 
+// RGB LED Light
+class HWRGBLight : public HWOutput {
+  public:
+    HWRGBLight(const JsonObject& json);
+    HWRGBLight() {}
+    int gPin;
+    int bPin;
+    int r;
+    int g;
+    int b;
+};
+
 // Basic definition of a hardware input component
 class HWInput : public HWComponent {
   public:
@@ -71,9 +83,11 @@ class HWDefinition {
     HWDefinition(const JsonObject& json);
     HWDefinition() {}
     int ledCount = 0;
+    int rgbCount = 0;
     int buttonCount = 0;
     int encoderCount = 0;
     HWLEDLight* leds; // Array of LEDs
+    HWRGBLight* rgbs; // Array of RGB LEDs
     HWButton* buttons; // Array of buttons
     HWEncoder* encoders; // Array of encoders
 };
