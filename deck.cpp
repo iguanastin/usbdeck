@@ -39,8 +39,10 @@ HWButton::HWButton(const JsonObject& json) : HWInput(json) {
 }
 bool HWButton::update() {
   bool result = button.update();
-  if (button.pressed() && binding != NULL && binding->action1 != NULL) binding->action1->perform();
-  else if (button.released() && binding != NULL && binding->action2 != NULL) binding->action2->perform();
+  if (binding != NULL) {
+    if (button.pressed() && binding->action1 != NULL) binding->action1->perform();
+    else if (button.released() && binding->action2 != NULL) binding->action2->perform();
+  }
 
   return result;
 }
@@ -50,9 +52,14 @@ HWEncoder::HWEncoder(const JsonObject& json) : HWInput(json) {
   encoder = new Encoder(pin, pin2);
 }
 bool HWEncoder::update() {
-  long delta = encoder->readAndReset();
-  if (delta < 0 && binding != NULL && binding->action1 != NULL) binding->action1->perform();
-  if (delta > 0 && binding != NULL && binding->action2 != NULL) binding->action2->perform();
+  long delta = encoder->read();
+  if (delta < 3 && delta > -3) return false; // Delta must be >= |3| to activate, or else it activates 4 times per detent
+  encoder->readAndReset();
+
+  if (binding != NULL) {
+    if (delta < 0 && binding->action1 != NULL) binding->action1->perform();
+    if (delta > 0 && binding->action2 != NULL) binding->action2->perform();
+  }
   lastDelta = delta;
 
   return delta != 0;

@@ -56,12 +56,13 @@ activations:
 
 #define ACTION_MOUSE 1
 #define ACTION_KEYBOARD 2
+#define ACTION_INSTANT_KEY 3
 
 
 class Action {
   public:
     Action() {}
-    virtual void perform();
+    virtual void perform() = 0;
 };
 
 class Binding {
@@ -71,7 +72,7 @@ class Binding {
     int hwID;
     Action* action1;
     Action* action2;
-    virtual void update();
+    virtual void update() {}
 };
 
 class MouseAction : public Action {
@@ -93,6 +94,13 @@ class KeyboardAction : public Action {
     int keys[6];
     int mods = 0;
     String* print;
+    void perform();
+};
+
+class InstantKeyAction : public Action {
+  public:
+    InstantKeyAction(const JsonObject& json);
+    int key;
     void perform();
 };
 

@@ -10,6 +10,8 @@
 #define JSON_DOC_MAX_SIZE 8192 // Probably overkill for most configurations. Really complex ones might need a higher max
 #define LITTLE_FS_SIZE 1048576 // Minimum of 131072 bytes seems to be required just to initialize LittleFS
 
+typedef Profile* ProfilePtr;
+
 
 void(* resetTeensy) (void) = 0; // Suspicious software reset that probably doesn't cycle memory and leaks everything instead
 
@@ -19,6 +21,9 @@ const char* configFilename = "config.json"; // Filename/path to the config file
 LittleFS_Program fs; // File store
 
 HWDefinition hw; // Hardware definition (buttons, encoders, lights, etc.)
+ProfilePtr* profiles;
+int profileCount;
+int currentProfile;
 bool configLoaded = false; // Is true after a config successfully loads
 
 elapsedMillis errorLedTimer; // LED flash timer for catastrophic errors
@@ -30,7 +35,7 @@ int ledRIdentPin = -1;
 int ledGIdentPin = -1;
 int ledBIdentPin = -1;
 
-bool identMode = true; // If board is in ident mode, inputs will send an ident command to the configurator instead of performing default config binding actions
+bool identMode = false; // If board is in ident mode, inputs will send an ident command to the configurator instead of performing default config binding actions
 
 
 void setup() {
@@ -116,23 +121,18 @@ void updateInputs() {
   // Update buttons
   for (int i = 0; i < hw.buttonCount; i++) {
     HWButton& btn = hw.buttons[i];
+    
     Binding* bind = btn.binding;
-
     if (identMode) btn.binding = NULL; // TODO Probably a terrible way to make the button not perform the bound action when identifying
-    if (btn.update() && identMode) {
-      Serial.println("IDENT");
-      identButton(btn);
-    }
+    if (btn.update() && identMode) identButton(btn);
     if (identMode) btn.binding = bind; // TODO Probably a terrible way to make the button not perform the bound action when identifying
   }
   for (int i = 0; i < hw.encoderCount; i++) {
     HWEncoder& enc = hw.encoders[i];
-    Binding* bind = enc.binding;
 
+    Binding* bind = enc.binding;
     if (identMode) enc.binding = NULL; // TODO Probably a terrible way to make the button not perform the bound action when identifying
-    if (enc.update() && identMode) {
-      identEncoder(enc, enc.lastDelta);
-    }
+    if (enc.update() && identMode) identEncoder(enc, enc.lastDelta);
     if (identMode) enc.binding = bind; // TODO Probably a terrible way to make the button not perform the bound action when identifying
   }
 }
@@ -320,9 +320,50 @@ bool readConfigFromFile(File& cfgFile) {
   } else {
     // Create hardware definition
     hw = HWDefinition(doc["hardware"].as<JsonObject>());
+    readProfiles(doc["profiles"]);
     doc.clear();
     doc.garbageCollect();
     return true;
+  }
+}
+
+void readProfiles(const JsonArray& json) {
+  profileCount = json.size();
+  profiles = new ProfilePtr[profileCount];
+  currentProfile = 0;
+
+  for (int i = 0; i < profileCount; i++) {
+    profiles[i] = new Profile(json[i].as<JsonObject>());
+  }
+
+  applyCurrentProfile();
+}
+
+void applyCurrentProfile() {
+  const Profile& profile = *profiles[currentProfile];
+
+  for (int i = 0; i < hw.buttonCount; i++) {
+    HWButton& btn = hw.buttons[i];
+    btn.binding = NULL;
+
+    for (int j = 0; j < profile.bindingCount; j++) {
+      if (profile.bindings[j].hwID == btn.id) {
+        btn.binding = &profile.bindings[j];
+        break;
+      }
+    }
+  }
+
+  for (int i = 0; i < hw.encoderCount; i++) {
+    HWEncoder& btn = hw.encoders[i];
+    btn.binding = NULL;
+
+    for (int j = 0; j < profile.bindingCount; j++) {
+      if (profile.bindings[j].hwID == btn.id) {
+        btn.binding = &profile.bindings[j];
+        break;
+      }
+    }
   }
 }
 

@@ -1,3 +1,4 @@
+#include "usb_keyboard.h"
 #include "keylayouts.h"
 #include "usb_mouse.h"
 #include "profile.hpp"
@@ -27,19 +28,19 @@ Profile::Profile(const JsonObject& json) {
 }
 
 Binding::Binding(const JsonObject& json) {
-  hwID = json["id"];
-  if (json.containsKey("action1")) action1 = parseAction(json["action1"]);
-  if (json.containsKey("action2")) action2 = parseAction(json["action2"]);
+  hwID = json["id"].as<int>();
+  if (json.containsKey("action1")) action1 = parseAction(json["action1"].as<JsonObject>());
+  if (json.containsKey("action2")) action2 = parseAction(json["action2"].as<JsonObject>());
 }
 
 MouseAction::MouseAction(const JsonObject& json) : Action() {
-  if (json.containsKey("scrolly")) scrollY = json["scrolly"];
-  if (json.containsKey("scrollx")) scrollX = json["scrollx"];
-  if (json.containsKey("movey")) moveY = json["movey"];
-  if (json.containsKey("movex")) moveX = json["movex"];
-  if (json.containsKey("press")) press = json["press"];
-  if (json.containsKey("release")) release = json["release"];
-  if (json.containsKey("button")) button = json["button"];
+  scrollY = json["scrolly"].as<int>();
+  scrollX = json["scrollx"].as<int>();
+  moveY = json["movey"].as<int>();
+  moveX = json["movex"].as<int>();
+  press = json["press"].as<bool>();
+  release = json["release"].as<bool>();
+  button = json["button"].as<int>();
 }
 void MouseAction::perform() {
   if (moveX != 0 || moveY != 0) Mouse.move(moveX, moveY);
@@ -92,12 +93,21 @@ void KeyboardAction::perform() {
   }
 }
 
+InstantKeyAction::InstantKeyAction(const JsonObject& json) : Action() {
+  key = json["key"].as<int>();
+}
+void InstantKeyAction::perform() {
+  Keyboard.press(key);
+  Keyboard.release(key);
+}
+
 Action* parseAction(const JsonObject& json) {
   if (json == NULL) return NULL;
 
   const int type = json["type"];
   if (type == ACTION_MOUSE) return new MouseAction(json);
   if (type == ACTION_KEYBOARD) return new KeyboardAction(json);
+  if (type == ACTION_INSTANT_KEY) return new InstantKeyAction(json);
 
   return NULL;
 }
