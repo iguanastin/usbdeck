@@ -1,4 +1,5 @@
 #include "serial.hpp"
+#include "util.hpp"
 
 
 // If both host and device are sending messages with their own id counter, there might be collisions
@@ -85,15 +86,4 @@ void receiveSerialMessageData(SerialMessage& msg) {
 
 void waitForSerial() {
   while (!Serial) continue;
-}
-
-void splitIntToBytes(const int number, char* bytes) {
-  bytes[0] = (number & 0xff000000UL) >> 24;
-  bytes[1] = (number & 0x00ff0000UL) >> 16;
-  bytes[2] = (number & 0x0000ff00UL) >> 8;
-  bytes[3] = (number & 0x000000ffUL);
-}
-
-int joinBytesToInt(const char* bytes) {
-  return ((int)bytes[0] << 24) | ((int)bytes[1] << 16) | ((int)bytes[2] << 8) | (int)bytes[3];
 }

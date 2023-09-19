@@ -1,3 +1,4 @@
+#include "core_pins.h"
 #include "deck.hpp"
 
 
@@ -97,4 +98,45 @@ HWDefinition::HWDefinition(const JsonObject& json) {
       buttons[buttonI++] = HWButton(j);
     }
   }
+}
+
+void LEDIdent::update() {
+  if (pin >= 0) {
+    if (timer > length) {
+      digitalWrite(pin, LOW);
+      pin = -1;
+    } else if (flashTimer > flashLength) {
+      flashTimer = 0;
+      digitalToggle(pin);
+    }
+  }
+}
+void LEDIdent::start(int ledPin) {
+  pin = ledPin;
+  timer = 0;
+  flashTimer = 0;
+  digitalWrite(pin, HIGH);
+}
+
+void RGBLEDIdent::update() {
+  if (rPin > 0) {
+    if (timer > length) {
+      analogWrite(rPin, 0);
+      analogWrite(gPin, 0);
+      analogWrite(bPin, 0);
+      rPin = -1;
+      gPin = -1;
+      bPin = -1;
+    } else {
+      analogWrite(rPin, (int)((sin(timer * 2 / 1000.0) + 1) * 255));
+      analogWrite(gPin, (int)((sin(timer * 2 / 1000.0 + 1.05) + 1) * 255));
+      analogWrite(bPin, (int)((sin(timer * 2 / 1000.0 + 2.1) + 1) * 255));
+    }
+  }
+}
+void RGBLEDIdent::start(int r, int g, int b) {
+  rPin = r;
+  gPin = g;
+  bPin = b;
+  timer = 0;
 }

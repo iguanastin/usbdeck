@@ -57,11 +57,5 @@ void receiveSerialMessageData(SerialMessage& msg);
 // Blocks until Serial connects
 void waitForSerial();
 
-// Splits a 4 byte int into the provided buffer
-void splitIntToBytes(const int number, char* bytes);
-
-// Joins the provided 4 bytes into a single int
-int joinBytesToInt(const char* bytes);
-
 
 #endif

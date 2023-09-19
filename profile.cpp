@@ -1,3 +1,4 @@
+#include "core_pins.h"
 #include "usb_keyboard.h"
 #include "keylayouts.h"
 #include "usb_mouse.h"
@@ -31,6 +32,50 @@ Binding::Binding(const JsonObject& json) {
   hwID = json["id"].as<int>();
   if (json.containsKey("action1")) action1 = parseAction(json["action1"].as<JsonObject>());
   if (json.containsKey("action2")) action2 = parseAction(json["action2"].as<JsonObject>());
+}
+
+StaticOutputBinding::StaticOutputBinding(const JsonObject& json) : Binding(json) { }
+
+SimpleFlashPattern::SimpleFlashPattern(const JsonObject& json) : FlashPattern() {
+  period = json["period"].as<int>();
+}
+bool SimpleFlashPattern::shouldToggle() {
+  if (timer > period) {
+    timer = 0;
+    return true;
+  }
+
+  return false;
+}
+void SimpleFlashPattern::start(const int pin) {
+  digitalWrite(pin, HIGH);
+}
+
+StaticFlashPattern::StaticFlashPattern(const JsonObject& json) : FlashPattern() {
+  state = json["state"].as<bool>();
+}
+void StaticFlashPattern::start(const int pin) {
+  if (state) {
+    digitalWrite(pin, HIGH);
+  } else {
+    digitalWrite(pin, LOW);
+  }
+}
+
+StaticLEDBinding::StaticLEDBinding(const JsonObject& json) : StaticOutputBinding(json) {
+  if (json.containsKey("pattern")) {
+    const JsonObject& patternJ = json["pattern"].as<JsonObject>();
+    const int type = patternJ["type"].as<int>();
+    if (type == FLASH_PATTERN_SIMPLE) pattern = new SimpleFlashPattern(patternJ);
+    else if (type == FLASH_PATTERN_STATIC) pattern = new StaticFlashPattern(patternJ); 
+  }
+}
+
+void StaticLEDBinding::update() {
+  if (pin >= 0 && pattern->shouldToggle()) digitalToggle(pin);
+}
+void StaticLEDBinding::start() {
+  if (pin >= 0) pattern->start(pin);
 }
 
 MouseAction::MouseAction(const JsonObject& json) : Action() {

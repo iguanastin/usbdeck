@@ -6,11 +6,10 @@
 #include "serial.hpp"
 #include "deck.hpp"
 #include "profile.hpp"
+#include "util.hpp"
 
 #define JSON_DOC_MAX_SIZE 8192 // Probably overkill for most configurations. Really complex ones might need a higher max
 #define LITTLE_FS_SIZE 1048576 // Minimum of 131072 bytes seems to be required just to initialize LittleFS
-
-typedef Profile* ProfilePtr;
 
 
 void(* resetTeensy) (void) = 0; // Suspicious software reset that probably doesn't cycle memory and leaks everything instead
@@ -21,21 +20,15 @@ const char* configFilename = "config.json"; // Filename/path to the config file
 LittleFS_Program fs; // File store
 
 HWDefinition hw; // Hardware definition (buttons, encoders, lights, etc.)
-ProfilePtr* profiles;
-int profileCount;
+LateArray<Profile> profiles;
 int currentProfile;
 bool configLoaded = false; // Is true after a config successfully loads
 
-elapsedMillis errorLedTimer; // LED flash timer for catastrophic errors
-elapsedMillis ledIdentTimer; // LED timer for identifying different LEDs
-elapsedMillis ledRGBIdentTimer;
-elapsedMillis ledIdentFlashTimer; // LED flash timer for identifying different LEDs
-int ledIdentPin = -1; // Current LED pin to flash, or -1 to not flash any
-int ledRIdentPin = -1;
-int ledGIdentPin = -1;
-int ledBIdentPin = -1;
-
 bool identMode = false; // If board is in ident mode, inputs will send an ident command to the configurator instead of performing default config binding actions
+RGBLEDIdent rgbIdent(3000);
+LEDIdent ledIdent(3000, 250);
+
+elapsedMillis errorLedTimer;
 
 
 void setup() {
@@ -80,31 +73,9 @@ void loop() {
     digitalToggle(LED_BUILTIN);
     errorLedTimer = 0;
   }
-  // Disable ident LED after timer
-  if (ledIdentPin >= 0) {
-    if (ledIdentTimer > 3000) {
-      digitalWrite(ledIdentPin, LOW);
-      ledIdentPin = -1;
-    } else if (ledIdentFlashTimer > 250) {
-      ledIdentFlashTimer = 0;
-      digitalToggle(ledIdentPin);
-    }
-  }
-  if (ledRIdentPin >= 0) {
-    if (ledRGBIdentTimer > 3000) {
-      analogWrite(ledRIdentPin, 0);
-      analogWrite(ledGIdentPin, 0);
-      analogWrite(ledBIdentPin, 0);
-      ledRIdentPin = -1;
-      ledGIdentPin = -1;
-      ledBIdentPin = -1;
-    } else {
-      analogWrite(ledRIdentPin, (int)((sin(ledRGBIdentTimer * 2 / 1000.0) + 1) * 255));
-      analogWrite(ledGIdentPin, (int)((sin(ledRGBIdentTimer * 2 / 1000.0 + 1.05) + 1) * 255));
-      analogWrite(ledBIdentPin, (int)((sin(ledRGBIdentTimer * 2 / 1000.0 + 2.1) + 1) * 255));
-    }
-  }
 
+  ledIdent.update();
+  rgbIdent.update();
 
   // Handle inputs?
   updateInputs();
@@ -269,21 +240,13 @@ void serialMessageHandler(const SerialMessage& msg) {
 
   // Ident LED
   else if (msg.type == SERIAL_IDENT_LED) {
-    ledIdentPin = 0;
-    for (int i = 0; i < msg.length; i++) {
-      ledIdentPin = ledIdentPin * 10 + (msg.data[i] - '0');
-    }
-    ledIdentTimer = 0;
-    digitalWrite(ledIdentPin, HIGH);
+    ledIdent.start(joinBytesToInt(msg.data));
 
     sendSerialMessage(SERIAL_RESPOND_OK, msg.id);
   }
 
   else if (msg.type == SERIAL_IDENT_RGB) {
-    ledRIdentPin = joinBytesToInt(msg.data);
-    ledGIdentPin = joinBytesToInt(msg.data+4);
-    ledBIdentPin = joinBytesToInt(msg.data+8);
-    ledRGBIdentTimer = 0;
+    rgbIdent.start(joinBytesToInt(msg.data), joinBytesToInt(msg.data+4), joinBytesToInt(msg.data+8));
 
     sendSerialMessage(SERIAL_RESPOND_OK, msg.id);
   }
@@ -328,19 +291,18 @@ bool readConfigFromFile(File& cfgFile) {
 }
 
 void readProfiles(const JsonArray& json) {
-  profileCount = json.size();
-  profiles = new ProfilePtr[profileCount];
-  currentProfile = 0;
+  if (!profiles.init(json.size())) return;
 
-  for (int i = 0; i < profileCount; i++) {
-    profiles[i] = new Profile(json[i].as<JsonObject>());
+  for (int i = 0; i < profiles.len; i++) {
+    profiles.arr[i] = new Profile(json[i].as<JsonObject>());
   }
 
+  currentProfile = 0;
   applyCurrentProfile();
 }
 
 void applyCurrentProfile() {
-  const Profile& profile = *profiles[currentProfile];
+  const Profile& profile = profiles[currentProfile];
 
   for (int i = 0; i < hw.buttonCount; i++) {
     HWButton& btn = hw.buttons[i];
@@ -365,13 +327,4 @@ void applyCurrentProfile() {
       }
     }
   }
-}
-
-// Check if two char arrays exactly match for a specified length
-bool strMatch(const char* str1, const char* str2, const int len) {
-  for (int i = 0; i < len; i++) {
-    if (str1[i] != str2[i]) return false;
-  }
-
-  return true;
 }

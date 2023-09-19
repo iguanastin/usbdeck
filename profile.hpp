@@ -1,3 +1,4 @@
+#include "elapsedMillis.h"
 #ifndef profile_h
 #define profile_h
 
@@ -58,6 +59,9 @@ activations:
 #define ACTION_KEYBOARD 2
 #define ACTION_INSTANT_KEY 3
 
+#define FLASH_PATTERN_SIMPLE 1
+#define FLASH_PATTERN_STATIC 2
+
 
 class Action {
   public:
@@ -70,9 +74,51 @@ class Binding {
     Binding(const JsonObject& json);
     Binding() {}
     int hwID;
-    Action* action1;
+    Action* action1; // TODO split actions into another subclass (ActionBinding)
     Action* action2;
     virtual void update() {}
+    virtual void start() {}
+};
+
+class StaticOutputBinding : public Binding {
+  public:
+    StaticOutputBinding(const JsonObject& json);
+};
+
+class FlashPattern { 
+  public:
+    elapsedMillis timer;
+    virtual int type() { return 0; }
+    virtual bool shouldToggle() { return false; }
+    virtual void start(const int pin) {}
+};
+
+class SimpleFlashPattern : public FlashPattern {
+  public:
+    SimpleFlashPattern(unsigned long int periodMillis) { period = periodMillis; }
+    SimpleFlashPattern(const JsonObject& json);
+    unsigned long int period = 100;
+    bool shouldToggle();
+    void start(const int pin);
+    int type() { return FLASH_PATTERN_SIMPLE; }
+};
+
+class StaticFlashPattern : public FlashPattern {
+  public:
+    StaticFlashPattern(bool on) { state = on; }
+    StaticFlashPattern(const JsonObject& json);
+    bool state;
+    void start(const int pin);
+    int type() { return FLASH_PATTERN_STATIC; }
+};
+
+class StaticLEDBinding : public StaticOutputBinding {
+  public:
+    StaticLEDBinding(const JsonObject& json);
+    FlashPattern* pattern;
+    int pin = -1;
+    void update();
+    void start();
 };
 
 class MouseAction : public Action {
