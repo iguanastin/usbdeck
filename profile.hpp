@@ -59,8 +59,9 @@ activations:
 #define ACTION_KEYBOARD 2
 #define ACTION_INSTANT_KEY 3
 
-#define FLASH_PATTERN_SIMPLE 1
-#define FLASH_PATTERN_STATIC 2
+#define LED_PATTERN_FLASH 1
+#define LED_PATTERN_STATIC 2
+#define LED_PATTERN_PULSE 3
 
 
 class Action {
@@ -85,37 +86,48 @@ class StaticOutputBinding : public Binding {
     StaticOutputBinding(const JsonObject& json);
 };
 
-class FlashPattern { 
+class LEDPattern { 
   public:
     elapsedMillis timer;
+    int pin;
     virtual int type() { return 0; }
-    virtual bool shouldToggle() { return false; }
     virtual void start(const int pin) {}
+    virtual void update() {}
 };
 
-class SimpleFlashPattern : public FlashPattern {
+class FlashLEDPattern : public LEDPattern {
   public:
-    SimpleFlashPattern(unsigned long int periodMillis) { period = periodMillis; }
-    SimpleFlashPattern(const JsonObject& json);
+    FlashLEDPattern(unsigned long int periodMillis) { period = periodMillis; }
+    FlashLEDPattern(const JsonObject& json);
     unsigned long int period = 100;
-    bool shouldToggle();
     void start(const int pin);
-    int type() { return FLASH_PATTERN_SIMPLE; }
+    void update();
+    int type() { return LED_PATTERN_FLASH; }
 };
 
-class StaticFlashPattern : public FlashPattern {
+class StaticLEDPattern : public LEDPattern {
   public:
-    StaticFlashPattern(bool on) { state = on; }
-    StaticFlashPattern(const JsonObject& json);
+    StaticLEDPattern(bool on) { state = on; }
+    StaticLEDPattern(const JsonObject& json);
     bool state;
     void start(const int pin);
-    int type() { return FLASH_PATTERN_STATIC; }
+    int type() { return LED_PATTERN_STATIC; }
+};
+
+class PulseLEDPattern : public LEDPattern {
+  public:
+    PulseLEDPattern(unsigned long int periodMillis) { period = periodMillis; }
+    PulseLEDPattern(const JsonObject& json);
+    unsigned long int period;
+    void start(const int pin);
+    void update();
+    int type() { return LED_PATTERN_PULSE; }
 };
 
 class StaticLEDBinding : public StaticOutputBinding {
   public:
     StaticLEDBinding(const JsonObject& json);
-    FlashPattern* pattern;
+    LEDPattern* pattern;
     int pin = -1;
     void update();
     void start();

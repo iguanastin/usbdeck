@@ -36,25 +36,24 @@ Binding::Binding(const JsonObject& json) {
 
 StaticOutputBinding::StaticOutputBinding(const JsonObject& json) : Binding(json) { }
 
-SimpleFlashPattern::SimpleFlashPattern(const JsonObject& json) : FlashPattern() {
+FlashLEDPattern::FlashLEDPattern(const JsonObject& json) : LEDPattern() {
   period = json["period"].as<int>();
 }
-bool SimpleFlashPattern::shouldToggle() {
+void FlashLEDPattern::update() {
   if (timer > period) {
     timer = 0;
-    return true;
+    digitalToggle(pin);
   }
-
-  return false;
 }
-void SimpleFlashPattern::start(const int pin) {
+void FlashLEDPattern::start(const int pin2) {
+  pin = pin2;
   digitalWrite(pin, HIGH);
 }
 
-StaticFlashPattern::StaticFlashPattern(const JsonObject& json) : FlashPattern() {
+StaticLEDPattern::StaticLEDPattern(const JsonObject& json) : LEDPattern() {
   state = json["state"].as<bool>();
 }
-void StaticFlashPattern::start(const int pin) {
+void StaticLEDPattern::start(const int pin) {
   if (state) {
     digitalWrite(pin, HIGH);
   } else {
@@ -62,17 +61,31 @@ void StaticFlashPattern::start(const int pin) {
   }
 }
 
+PulseLEDPattern::PulseLEDPattern(const JsonObject& json) : LEDPattern() {
+  period = json["period"].as<int>();
+}
+void PulseLEDPattern::start(const int pin2) {
+  pin = pin2;
+  timer = 0;
+}
+void PulseLEDPattern::update() {
+  if (timer >= period) timer = 0;
+  int state = (int)((sin(3.14*2 * timer/period) + 1) / 2 * 255);
+  analogWrite(pin, state);
+}
+
 StaticLEDBinding::StaticLEDBinding(const JsonObject& json) : StaticOutputBinding(json) {
   if (json.containsKey("pattern")) {
     const JsonObject& patternJ = json["pattern"].as<JsonObject>();
     const int type = patternJ["type"].as<int>();
-    if (type == FLASH_PATTERN_SIMPLE) pattern = new SimpleFlashPattern(patternJ);
-    else if (type == FLASH_PATTERN_STATIC) pattern = new StaticFlashPattern(patternJ); 
+    if (type == LED_PATTERN_FLASH) pattern = new FlashLEDPattern(patternJ);
+    else if (type == LED_PATTERN_STATIC) pattern = new StaticLEDPattern(patternJ);
+    else if (type == LED_PATTERN_PULSE) pattern = new PulseLEDPattern(patternJ);
   }
 }
 
 void StaticLEDBinding::update() {
-  if (pin >= 0 && pattern->shouldToggle()) digitalToggle(pin);
+  if (pin >= 0) pattern->update();
 }
 void StaticLEDBinding::start() {
   if (pin >= 0) pattern->start(pin);
