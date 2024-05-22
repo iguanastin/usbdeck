@@ -1,3 +1,6 @@
+#ifndef util_h
+#define util_h
+
 template <class T> class LateArray {
   public:
     bool initialized = false;
@@ -26,3 +29,6 @@ void splitIntToBytes(const int number, char* bytes);
 
 // Joins the provided 4 bytes into a single int
 int joinBytesToInt(const char* bytes);
+
+
+#endif

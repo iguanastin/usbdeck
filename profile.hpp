@@ -3,6 +3,7 @@
 #define profile_h
 
 #include <ArduinoJson.h>
+#include "util.hpp"
 
 /*
 
@@ -62,6 +63,7 @@ activations:
 #define LED_PATTERN_FLASH 1
 #define LED_PATTERN_STATIC 2
 #define LED_PATTERN_PULSE 3
+#define LED_PATTERN_CUSTOM 4
 
 
 class Action {
@@ -75,7 +77,7 @@ class Binding {
     Binding(const JsonObject& json);
     Binding() {}
     int hwID;
-    Action* action1; // TODO split actions into another subclass (ActionBinding)
+    Action* action1;
     Action* action2;
     virtual void update() {}
     virtual void start() {}
@@ -122,6 +124,25 @@ class PulseLEDPattern : public LEDPattern {
     void start(const int pin);
     void update();
     int type() { return LED_PATTERN_PULSE; }
+};
+
+class LEDState {
+  public:
+    LEDState(int delayMillis, int pwmState) { delay = delayMillis; pwm = pwmState; }
+    LEDState(const JsonObject& json);
+    int delay;
+    int pwm;
+};
+
+class CustomLEDPattern : public LEDPattern {
+  public:
+    CustomLEDPattern() {}
+    CustomLEDPattern(const JsonObject& json);
+    LateArray<LEDState> states;
+    int state = 0;
+    void start(const int pin);
+    void update();
+    int type() { return LED_PATTERN_CUSTOM; }
 };
 
 class StaticLEDBinding : public StaticOutputBinding {

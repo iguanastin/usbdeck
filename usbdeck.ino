@@ -16,6 +16,8 @@ void(* resetTeensy) (void) = 0; // Suspicious software reset that probably doesn
 
 
 const char* configFilename = "config.json"; // Filename/path to the config file
+const char* hardwareFilename = "hardware.json";
+const char* profilesFilename = "profiles.json";
 
 LittleFS_Program fs; // File store
 
@@ -283,7 +285,7 @@ bool readConfigFromFile(File& cfgFile) {
   } else {
     // Create hardware definition
     hw = HWDefinition(doc["hardware"].as<JsonObject>());
-    readProfiles(doc["profiles"]);
+    readProfiles(doc["profiles"].as<JsonArray>());
     doc.clear();
     doc.garbageCollect();
     return true;

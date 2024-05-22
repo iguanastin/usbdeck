@@ -74,6 +74,33 @@ void PulseLEDPattern::update() {
   analogWrite(pin, state);
 }
 
+CustomLEDPattern::CustomLEDPattern(const JsonObject& json) {
+  const JsonArray& arr = json["states"].as<JsonArray>();
+  if (!states.init(arr.size())) return;
+  for (int i = 0; i < states.len; i++) {
+    states.arr[i] = new LEDState(arr[i].as<JsonObject>());
+  }
+}
+void CustomLEDPattern::start(const int pin2) {
+  pin = pin2;
+  timer = 0;
+  state = 0;
+  analogWrite(pin, states[state].pwm);
+}
+void CustomLEDPattern::update() {
+  if (timer > (unsigned long int)states[state].delay) {
+    timer = 0;
+    state++;
+    if (state > states.len) state = 0; // Wrap around to start
+    analogWrite(pin, states[state].pwm);
+  }
+}
+
+LEDState::LEDState(const JsonObject& json) {
+  delay = json["delay"].as<int>();
+  pwm = json["pwm"].as<int>();
+}
+
 StaticLEDBinding::StaticLEDBinding(const JsonObject& json) : StaticOutputBinding(json) {
   if (json.containsKey("pattern")) {
     const JsonObject& patternJ = json["pattern"].as<JsonObject>();
@@ -81,6 +108,7 @@ StaticLEDBinding::StaticLEDBinding(const JsonObject& json) : StaticOutputBinding
     if (type == LED_PATTERN_FLASH) pattern = new FlashLEDPattern(patternJ);
     else if (type == LED_PATTERN_STATIC) pattern = new StaticLEDPattern(patternJ);
     else if (type == LED_PATTERN_PULSE) pattern = new PulseLEDPattern(patternJ);
+    else if (type == LED_PATTERN_CUSTOM) pattern = new CustomLEDPattern(patternJ); 
   }
 }
 
