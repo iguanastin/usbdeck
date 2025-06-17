@@ -7,6 +7,9 @@
 #include "deck.hpp"
 #include "profile.hpp"
 
+#define JSON_DOC_MAX_SIZE 8192 // Probably overkill for most configurations. Really complex ones might need a higher max
+#define LITTLE_FS_SIZE 1048576 // Minimum of 131072 bytes seems to be required just to initialize LittleFS
+
 
 void(* resetTeensy) (void) = 0; // Suspicious software reset that probably doesn't cycle memory and leaks everything instead
 
@@ -37,7 +40,7 @@ void setup() {
   Serial.println(F("- USBDeck is starting up -"));
 
   // Init LittleFS filesystem
-  if (!fs.begin(1024*1024)) { // 131072 bytes seems to be required just to initialize LittleFS
+  if (!fs.begin(LITTLE_FS_SIZE)) {
     Serial.println(F("*** FAILED TO START LittleFS ***"));
   }
 
@@ -281,7 +284,7 @@ bool readConfigFromFile(File& cfgFile) {
   cfgFile.close();
 
   // Parse JSON config
-  DynamicJsonDocument doc(1024);
+  DynamicJsonDocument doc(JSON_DOC_MAX_SIZE);
   DeserializationError error = deserializeJson(doc, jsonStr, size);
   if (error) {
     Serial.print(F("deserializeJson() failed: "));
