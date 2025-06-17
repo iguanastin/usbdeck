@@ -6,6 +6,10 @@
 #include "serial.hpp"
 #include "deck.hpp"
 #include "profile.hpp"
+#include "util.hpp"
+
+#define JSON_DOC_MAX_SIZE 8192 // Probably overkill for most configurations. Really complex ones might need a higher max
+#define LITTLE_FS_SIZE 1048576 // Minimum of 131072 bytes seems to be required just to initialize LittleFS
 
 #define JSON_DOC_MAX_SIZE 8192 // Probably overkill for most configurations. Really complex ones might need a higher max
 #define LITTLE_FS_SIZE 1048576 // Minimum of 131072 bytes seems to be required just to initialize LittleFS
@@ -15,18 +19,21 @@ void(* resetTeensy) (void) = 0; // Suspicious software reset that probably doesn
 
 
 const char* configFilename = "config.json"; // Filename/path to the config file
+const char* hardwareFilename = "hardware.json";
+const char* profilesFilename = "profiles.json";
 
 LittleFS_Program fs; // File store
 
 HWDefinition hw; // Hardware definition (buttons, encoders, lights, etc.)
+LateArray<Profile> profiles;
+int currentProfile;
 bool configLoaded = false; // Is true after a config successfully loads
 
-elapsedMillis errorLedTimer; // LED flash timer for catastrophic errors
-elapsedMillis ledIdentTimer; // LED timer for identifying different LEDs
-elapsedMillis ledIdentFlashTimer; // LED flash timer for identifying different LEDs
-int ledIdentPin = -1; // Current LED pin to flash, or -1 to not flash any
-
 bool identMode = false; // If board is in ident mode, inputs will send an ident command to the configurator instead of performing default config binding actions
+RGBLEDIdent rgbIdent(3000);
+LEDIdent ledIdent(3000, 250);
+
+elapsedMillis errorLedTimer;
 
 
 void setup() {
@@ -71,17 +78,9 @@ void loop() {
     digitalToggle(LED_BUILTIN);
     errorLedTimer = 0;
   }
-  // Disable ident LED after timer
-  if (ledIdentPin >= 0) {
-    if (ledIdentTimer > 3000) {
-      digitalWrite(ledIdentPin, LOW);
-      ledIdentPin = -1;
-    } else if (ledIdentFlashTimer > 250) {
-      ledIdentFlashTimer = 0;
-      digitalToggle(ledIdentPin);
-    }
-  }
 
+  ledIdent.update();
+  rgbIdent.update();
 
   // Handle inputs?
   updateInputs();
@@ -98,23 +97,18 @@ void updateInputs() {
   // Update buttons
   for (int i = 0; i < hw.buttonCount; i++) {
     HWButton& btn = hw.buttons[i];
+    
     Binding* bind = btn.binding;
-
     if (identMode) btn.binding = NULL; // TODO Probably a terrible way to make the button not perform the bound action when identifying
-    if (btn.update() && identMode) {
-      Serial.println("IDENT");
-      identButton(btn);
-    }
+    if (btn.update() && identMode) identButton(btn);
     if (identMode) btn.binding = bind; // TODO Probably a terrible way to make the button not perform the bound action when identifying
   }
   for (int i = 0; i < hw.encoderCount; i++) {
     HWEncoder& enc = hw.encoders[i];
-    Binding* bind = enc.binding;
 
+    Binding* bind = enc.binding;
     if (identMode) enc.binding = NULL; // TODO Probably a terrible way to make the button not perform the bound action when identifying
-    if (enc.update() && identMode) {
-      identEncoder(enc, enc.lastDelta);
-    }
+    if (enc.update() && identMode) identEncoder(enc, enc.lastDelta);
     if (identMode) enc.binding = bind; // TODO Probably a terrible way to make the button not perform the bound action when identifying
   }
 }
@@ -251,12 +245,13 @@ void serialMessageHandler(const SerialMessage& msg) {
 
   // Ident LED
   else if (msg.type == SERIAL_IDENT_LED) {
-    ledIdentPin = 0;
-    for (int i = 0; i < msg.length; i++) {
-      ledIdentPin = ledIdentPin * 10 + (msg.data[i] - '0');
-    }
-    ledIdentTimer = 0;
-    digitalWrite(ledIdentPin, HIGH);
+    ledIdent.start(joinBytesToInt(msg.data));
+
+    sendSerialMessage(SERIAL_RESPOND_OK, msg.id);
+  }
+
+  else if (msg.type == SERIAL_IDENT_RGB) {
+    rgbIdent.start(joinBytesToInt(msg.data), joinBytesToInt(msg.data+4), joinBytesToInt(msg.data+8));
 
     sendSerialMessage(SERIAL_RESPOND_OK, msg.id);
   }
@@ -293,17 +288,48 @@ bool readConfigFromFile(File& cfgFile) {
   } else {
     // Create hardware definition
     hw = HWDefinition(doc["hardware"].as<JsonObject>());
+    readProfiles(doc["profiles"].as<JsonArray>());
     doc.clear();
     doc.garbageCollect();
     return true;
   }
 }
 
-// Check if two char arrays exactly match for a specified length
-bool strMatch(const char* str1, const char* str2, const int len) {
-  for (int i = 0; i < len; i++) {
-    if (str1[i] != str2[i]) return false;
+void readProfiles(const JsonArray& json) {
+  if (!profiles.init(json.size())) return;
+
+  for (int i = 0; i < profiles.len; i++) {
+    profiles.arr[i] = new Profile(json[i].as<JsonObject>());
   }
 
-  return true;
+  currentProfile = 0;
+  applyCurrentProfile();
+}
+
+void applyCurrentProfile() {
+  const Profile& profile = profiles[currentProfile];
+
+  for (int i = 0; i < hw.buttonCount; i++) {
+    HWButton& btn = hw.buttons[i];
+    btn.binding = NULL;
+
+    for (int j = 0; j < profile.bindingCount; j++) {
+      if (profile.bindings[j].hwID == btn.id) {
+        btn.binding = &profile.bindings[j];
+        break;
+      }
+    }
+  }
+
+  for (int i = 0; i < hw.encoderCount; i++) {
+    HWEncoder& btn = hw.encoders[i];
+    btn.binding = NULL;
+
+    for (int j = 0; j < profile.bindingCount; j++) {
+      if (profile.bindings[j].hwID == btn.id) {
+        btn.binding = &profile.bindings[j];
+        break;
+      }
+    }
+  }
 }

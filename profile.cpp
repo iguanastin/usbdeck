@@ -1,3 +1,5 @@
+#include "core_pins.h"
+#include "usb_keyboard.h"
 #include "keylayouts.h"
 #include "usb_mouse.h"
 #include "profile.hpp"
@@ -17,22 +19,114 @@ Profile::Profile(const JsonObject& json) {
   r = json["r"].as<int>();
   g = json["g"].as<int>();
   b = json["b"].as<int>();
+
+  const JsonArray& binds = json["bindings"].as<JsonArray>();
+  bindingCount = binds.size();
+  bindings = new Binding[bindingCount];
+  for (int i = 0; i < bindingCount; i++) {
+    bindings[i] = Binding(binds[i].as<JsonObject>());
+  }
 }
 
 Binding::Binding(const JsonObject& json) {
-  hwID = json["id"];
-  if (json.containsKey("action1")) action1 = parseAction(json["action1"]);
-  if (json.containsKey("action2")) action2 = parseAction(json["action2"]);
+  hwID = json["id"].as<int>();
+  if (json.containsKey("action1")) action1 = parseAction(json["action1"].as<JsonObject>());
+  if (json.containsKey("action2")) action2 = parseAction(json["action2"].as<JsonObject>());
+}
+
+StaticOutputBinding::StaticOutputBinding(const JsonObject& json) : Binding(json) { }
+
+FlashLEDPattern::FlashLEDPattern(const JsonObject& json) : LEDPattern() {
+  period = json["period"].as<int>();
+}
+void FlashLEDPattern::update() {
+  if (timer > period) {
+    timer = 0;
+    digitalToggle(pin);
+  }
+}
+void FlashLEDPattern::start(const int pin2) {
+  pin = pin2;
+  digitalWrite(pin, HIGH);
+}
+
+StaticLEDPattern::StaticLEDPattern(const JsonObject& json) : LEDPattern() {
+  state = json["state"].as<bool>();
+}
+void StaticLEDPattern::start(const int pin) {
+  if (state) {
+    digitalWrite(pin, HIGH);
+  } else {
+    digitalWrite(pin, LOW);
+  }
+}
+
+PulseLEDPattern::PulseLEDPattern(const JsonObject& json) : LEDPattern() {
+  period = json["period"].as<int>();
+}
+void PulseLEDPattern::start(const int pin2) {
+  pin = pin2;
+  timer = 0;
+}
+void PulseLEDPattern::update() {
+  if (timer >= period) timer = 0;
+  int state = (int)((sin(3.14*2 * timer/period) + 1) / 2 * 255);
+  analogWrite(pin, state);
+}
+
+CustomLEDPattern::CustomLEDPattern(const JsonObject& json) {
+  const JsonArray& arr = json["states"].as<JsonArray>();
+  if (!states.init(arr.size())) return;
+  for (int i = 0; i < states.len; i++) {
+    states.arr[i] = new LEDState(arr[i].as<JsonObject>());
+  }
+}
+void CustomLEDPattern::start(const int pin2) {
+  pin = pin2;
+  timer = 0;
+  state = 0;
+  analogWrite(pin, states[state].pwm);
+}
+void CustomLEDPattern::update() {
+  if (timer > (unsigned long int)states[state].delay) {
+    timer = 0;
+    state++;
+    if (state > states.len) state = 0; // Wrap around to start
+    analogWrite(pin, states[state].pwm);
+  }
+}
+
+LEDState::LEDState(const JsonObject& json) {
+  delay = json["delay"].as<int>();
+  pwm = json["pwm"].as<int>();
+}
+
+StaticLEDBinding::StaticLEDBinding(const JsonObject& json) : StaticOutputBinding(json) {
+  if (json.containsKey("pattern")) {
+    const JsonObject& patternJ = json["pattern"].as<JsonObject>();
+    const int type = patternJ["type"].as<int>();
+    if (type == LED_PATTERN_FLASH) pattern = new FlashLEDPattern(patternJ);
+    else if (type == LED_PATTERN_STATIC) pattern = new StaticLEDPattern(patternJ);
+    else if (type == LED_PATTERN_PULSE) pattern = new PulseLEDPattern(patternJ);
+    else if (type == LED_PATTERN_CUSTOM) pattern = new CustomLEDPattern(patternJ); 
+  }
+}
+
+void StaticLEDBinding::update() {
+  if (pin >= 0) pattern->update();
+}
+void StaticLEDBinding::start() {
+  if (pin >= 0) pattern->start(pin);
 }
 
 MouseAction::MouseAction(const JsonObject& json) : Action() {
-  if (json.containsKey("scrolly")) scrollY = json["scrolly"];
-  if (json.containsKey("scrollx")) scrollX = json["scrollx"];
-  if (json.containsKey("movey")) moveY = json["movey"];
-  if (json.containsKey("movex")) moveX = json["movex"];
-  if (json.containsKey("press")) press = json["press"];
-  if (json.containsKey("release")) release = json["release"];
-  if (json.containsKey("button")) button = json["button"];
+  scrollY = json["scrolly"].as<int>();
+  scrollX = json["scrollx"].as<int>();
+  moveY = json["movey"].as<int>();
+  moveX = json["movex"].as<int>();
+  press = json["press"].as<bool>();
+  release = json["release"].as<bool>();
+  button = json["button"].as<int>();
 }
 void MouseAction::perform() {
   if (moveX != 0 || moveY != 0) Mouse.move(moveX, moveY);
@@ -85,10 +179,21 @@ void KeyboardAction::perform() {
   }
 }
 
+InstantKeyAction::InstantKeyAction(const JsonObject& json) : Action() {
+  key = json["key"].as<int>();
+}
+void InstantKeyAction::perform() {
+  Keyboard.press(key);
+  Keyboard.release(key);
+}
+
 Action* parseAction(const JsonObject& json) {
+  if (json == NULL) return NULL;
+
   const int type = json["type"];
   if (type == ACTION_MOUSE) return new MouseAction(json);
   if (type == ACTION_KEYBOARD) return new KeyboardAction(json);
+  if (type == ACTION_INSTANT_KEY) return new InstantKeyAction(json);
 
   return NULL;
 }

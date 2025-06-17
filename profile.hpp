@@ -1,7 +1,9 @@
+#include "elapsedMillis.h"
 #ifndef profile_h
 #define profile_h
 
 #include <ArduinoJson.h>
+#include "util.hpp"
 
 /*
 
@@ -54,23 +56,102 @@ activations:
 
 */
 
-#define ACTION_MOUSE 0
-#define ACTION_KEYBOARD 1
+#define ACTION_MOUSE 1
+#define ACTION_KEYBOARD 2
+#define ACTION_INSTANT_KEY 3
+
+#define LED_PATTERN_FLASH 1
+#define LED_PATTERN_STATIC 2
+#define LED_PATTERN_PULSE 3
+#define LED_PATTERN_CUSTOM 4
 
 
 class Action {
   public:
     Action() {}
-    virtual void perform();
+    virtual void perform() = 0;
 };
 
 class Binding {
   public:
     Binding(const JsonObject& json);
+    Binding() {}
     int hwID;
     Action* action1;
     Action* action2;
-    virtual void update();
+    virtual void update() {}
+    virtual void start() {}
+};
+
+class StaticOutputBinding : public Binding {
+  public:
+    StaticOutputBinding(const JsonObject& json);
+};
+
+class LEDPattern { 
+  public:
+    elapsedMillis timer;
+    int pin;
+    virtual int type() { return 0; }
+    virtual void start(const int pin) {}
+    virtual void update() {}
+};
+
+class FlashLEDPattern : public LEDPattern {
+  public:
+    FlashLEDPattern(unsigned long int periodMillis) { period = periodMillis; }
+    FlashLEDPattern(const JsonObject& json);
+    unsigned long int period = 100;
+    void start(const int pin);
+    void update();
+    int type() { return LED_PATTERN_FLASH; }
+};
+
+class StaticLEDPattern : public LEDPattern {
+  public:
+    StaticLEDPattern(bool on) { state = on; }
+    StaticLEDPattern(const JsonObject& json);
+    bool state;
+    void start(const int pin);
+    int type() { return LED_PATTERN_STATIC; }
+};
+
+class PulseLEDPattern : public LEDPattern {
+  public:
+    PulseLEDPattern(unsigned long int periodMillis) { period = periodMillis; }
+    PulseLEDPattern(const JsonObject& json);
+    unsigned long int period;
+    void start(const int pin);
+    void update();
+    int type() { return LED_PATTERN_PULSE; }
+};
+
+class LEDState {
+  public:
+    LEDState(int delayMillis, int pwmState) { delay = delayMillis; pwm = pwmState; }
+    LEDState(const JsonObject& json);
+    int delay;
+    int pwm;
+};
+
+class CustomLEDPattern : public LEDPattern {
+  public:
+    CustomLEDPattern() {}
+    CustomLEDPattern(const JsonObject& json);
+    LateArray<LEDState> states;
+    int state = 0;
+    void start(const int pin);
+    void update();
+    int type() { return LED_PATTERN_CUSTOM; }
+};
+
+class StaticLEDBinding : public StaticOutputBinding {
+  public:
+    StaticLEDBinding(const JsonObject& json);
+    LEDPattern* pattern;
+    int pin = -1;
+    void update();
+    void start();
 };
 
 class MouseAction : public Action {
@@ -92,6 +173,13 @@ class KeyboardAction : public Action {
     int keys[6];
     int mods = 0;
     String* print;
+    void perform();
+};
+
+class InstantKeyAction : public Action {
+  public:
+    InstantKeyAction(const JsonObject& json);
+    int key;
     void perform();
 };
 

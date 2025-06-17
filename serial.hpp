@@ -17,6 +17,7 @@
 #define SERIAL_IDENT_LED 9
 #define SERIAL_IDENT_ENCODER 10
 #define SERIAL_IDENT_BUTTON 11
+#define SERIAL_IDENT_RGB 12
 
 #define COMMAND_CHAR '~'
 
@@ -55,12 +56,6 @@ void receiveSerialMessageData(SerialMessage& msg);
 
 // Blocks until Serial connects
 void waitForSerial();
-
-// Splits a 4 byte int into the provided buffer
-void splitIntToBytes(const int number, char* bytes);
-
-// Joins the provided 4 bytes into a single int
-int joinBytesToInt(const char* bytes);
 
 
 #endif
