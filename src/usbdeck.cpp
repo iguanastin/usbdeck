@@ -1,3 +1,4 @@
+#include <Arduino.h>
 #include <ArduinoJson.h>
 // https://arduinojson.org/
 #include <LittleFS.h>
@@ -34,6 +35,18 @@ RGBLEDIdent rgbIdent(3000);
 LEDIdent ledIdent(3000, 250);
 
 elapsedMillis errorLedTimer;
+
+
+void updateInputs();
+void identEncoder(const HWEncoder& encoder, int delta);
+void identButton(const HWButton& button);
+bool writeStringToFile(const char* filepath, const char* bytes, const int length);
+void doSerial();
+void serialMessageHandler(const SerialMessage& msg);
+bool readConfig();
+bool readConfigFromFile(File& cfgFile);
+void readProfiles(const JsonArray& json);
+void applyCurrentProfile();
 
 
 void setup() {
