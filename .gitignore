@@ -1,1 +1,5 @@
-/.theia
+.pio
+.vscode
+include
+lib
+test
