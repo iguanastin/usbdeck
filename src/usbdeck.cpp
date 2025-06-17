@@ -292,7 +292,7 @@ bool readConfigFromFile(File& cfgFile) {
   cfgFile.close();
 
   // Parse JSON config
-  DynamicJsonDocument doc(JSON_DOC_MAX_SIZE);
+  JsonDocument doc;
   DeserializationError error = deserializeJson(doc, jsonStr, size);
   if (error) {
     Serial.print(F("deserializeJson() failed: "));
@@ -303,7 +303,7 @@ bool readConfigFromFile(File& cfgFile) {
     hw = HWDefinition(doc["hardware"].as<JsonObject>());
     readProfiles(doc["profiles"].as<JsonArray>());
     doc.clear();
-    doc.garbageCollect();
+    doc.shrinkToFit();
     return true;
   }
 }

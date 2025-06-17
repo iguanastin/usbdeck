@@ -30,8 +30,8 @@ Profile::Profile(const JsonObject& json) {
 
 Binding::Binding(const JsonObject& json) {
   hwID = json["id"].as<int>();
-  if (json.containsKey("action1")) action1 = parseAction(json["action1"].as<JsonObject>());
-  if (json.containsKey("action2")) action2 = parseAction(json["action2"].as<JsonObject>());
+  if (json["action1"].is<JsonObject>()) action1 = parseAction(json["action1"].as<JsonObject>());
+  if (json["action2"].is<JsonObject>()) action2 = parseAction(json["action2"].as<JsonObject>());
 }
 
 StaticOutputBinding::StaticOutputBinding(const JsonObject& json) : Binding(json) { }
@@ -102,7 +102,7 @@ LEDState::LEDState(const JsonObject& json) {
 }
 
 StaticLEDBinding::StaticLEDBinding(const JsonObject& json) : StaticOutputBinding(json) {
-  if (json.containsKey("pattern")) {
+  if (json["pattern"].is<JsonObject>()) {
     const JsonObject& patternJ = json["pattern"].as<JsonObject>();
     const int type = patternJ["type"].as<int>();
     if (type == LED_PATTERN_FLASH) pattern = new FlashLEDPattern(patternJ);
@@ -141,12 +141,12 @@ KeyboardAction::KeyboardAction(const JsonObject& json) : Action() {
   if (json["alt"]) mods = mods | MODIFIERKEY_ALT;
   if (json["gui"]) mods = mods | MODIFIERKEY_GUI;
 
-  if (json.containsKey("keys")) {
+  if (json["keys"].is<JsonArray>()) {
     JsonArrayConst jsonKeys = json["keys"];
     for (unsigned int i = 0; i < jsonKeys.size() && i < 6; i++) {
       keys[i] = jsonKeys[i];
     }
-  } else if (json.containsKey("print")) {
+  } else if (json["print"].is<String>()) {
     print = new String(json["print"].as<String>());
   }
 }
