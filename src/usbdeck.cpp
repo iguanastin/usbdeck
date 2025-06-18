@@ -20,14 +20,10 @@ void(* resetTeensy) (void) = 0; // Suspicious software reset that probably doesn
 
 
 const char* configFilename = "config.json"; // Filename/path to the config file
-const char* hardwareFilename = "hardware.json";
-const char* profilesFilename = "profiles.json";
 
 LittleFS_Program fs; // File store
 
 HWDefinition hw; // Hardware definition (buttons, encoders, lights, etc.)
-LateArray<Profile> profiles;
-int currentProfile;
 bool configLoaded = false; // Is true after a config successfully loads
 
 bool identMode = false; // If board is in ident mode, inputs will send an ident command to the configurator instead of performing default config binding actions
@@ -95,8 +91,10 @@ void loop() {
   ledIdent.update();
   rgbIdent.update();
 
-  // Handle inputs?
-  updateInputs();
+  // Update hardware components
+  for (int i = 0; i < hw.size; i++) {
+    hw.components[i]->update();
+  }
 
   // Handle serial
   doSerial();
@@ -104,27 +102,6 @@ void loop() {
 }
 
 
-
-// Check hardware for events
-void updateInputs() {
-  // Update buttons
-  for (int i = 0; i < hw.buttonCount; i++) {
-    HWButton& btn = hw.buttons[i];
-    
-    Binding* bind = btn.binding;
-    if (identMode) btn.binding = NULL; // TODO Probably a terrible way to make the button not perform the bound action when identifying
-    if (btn.update() && identMode) identButton(btn);
-    if (identMode) btn.binding = bind; // TODO Probably a terrible way to make the button not perform the bound action when identifying
-  }
-  for (int i = 0; i < hw.encoderCount; i++) {
-    HWEncoder& enc = hw.encoders[i];
-
-    Binding* bind = enc.binding;
-    if (identMode) enc.binding = NULL; // TODO Probably a terrible way to make the button not perform the bound action when identifying
-    if (enc.update() && identMode) identEncoder(enc, enc.lastDelta);
-    if (identMode) enc.binding = bind; // TODO Probably a terrible way to make the button not perform the bound action when identifying
-  }
-}
 
 // Send ident request for a specified encoder
 void identEncoder(const HWEncoder& encoder, int delta) {
@@ -201,12 +178,8 @@ void doSerial() {
         Serial.print(F("FS Total: "));
         Serial.println(fs.totalSize());
       } else if (strMatch(buffer + i + 1, "hwstat\n", 7)) {
-        Serial.print(F("Buttons: "));
-        Serial.println(hw.buttonCount);
-        Serial.print(F("Encoders: "));
-        Serial.println(hw.encoderCount);
-        Serial.print(F("LEDs: "));
-        Serial.println(hw.ledCount);
+        Serial.print(F("Components: "));
+        Serial.println(hw.size);
       }
     }
   }
@@ -301,48 +274,8 @@ bool readConfigFromFile(File& cfgFile) {
   } else {
     // Create hardware definition
     hw = HWDefinition(doc["hardware"].as<JsonObject>());
-    readProfiles(doc["profiles"].as<JsonArray>());
     doc.clear();
     doc.shrinkToFit();
     return true;
-  }
-}
-
-void readProfiles(const JsonArray& json) {
-  if (!profiles.init(json.size())) return;
-
-  for (int i = 0; i < profiles.len; i++) {
-    profiles.arr[i] = new Profile(json[i].as<JsonObject>());
-  }
-
-  currentProfile = 0;
-  applyCurrentProfile();
-}
-
-void applyCurrentProfile() {
-  const Profile& profile = profiles[currentProfile];
-
-  for (int i = 0; i < hw.buttonCount; i++) {
-    HWButton& btn = hw.buttons[i];
-    btn.binding = NULL;
-
-    for (int j = 0; j < profile.bindingCount; j++) {
-      if (profile.bindings[j].hwID == btn.id) {
-        btn.binding = &profile.bindings[j];
-        break;
-      }
-    }
-  }
-
-  for (int i = 0; i < hw.encoderCount; i++) {
-    HWEncoder& btn = hw.encoders[i];
-    btn.binding = NULL;
-
-    for (int j = 0; j < profile.bindingCount; j++) {
-      if (profile.bindings[j].hwID == btn.id) {
-        btn.binding = &profile.bindings[j];
-        break;
-      }
-    }
   }
 }

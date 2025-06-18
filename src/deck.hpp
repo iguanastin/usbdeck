@@ -6,7 +6,6 @@
 // https://github.com/thomasfredericks/Bounce2#
 #include <Encoder.h>
 // https://github.com/PaulStoffregen/Encoder
-#include "profile.hpp"
 
 
 // Basic definition of a hardware component
@@ -20,22 +19,15 @@ class HWComponent {
     HWComponent() {}
 };
 
-// Basic definition of a hardware output component
-class HWOutput : public HWComponent {
-  protected:
-    HWOutput(const JsonObject& json);
-    HWOutput() {}
-};
-
 // LED light
-class HWLEDLight : public HWOutput {
+class HWLEDLight : public HWComponent {
   public:
     HWLEDLight(const JsonObject& json);
     HWLEDLight() {}
 };
 
 // RGB LED Light
-class HWRGBLight : public HWOutput {
+class HWRGBLight : public HWComponent {
   public:
     HWRGBLight(const JsonObject& json);
     HWRGBLight() {}
@@ -46,17 +38,8 @@ class HWRGBLight : public HWOutput {
     int b;
 };
 
-// Basic definition of a hardware input component
-class HWInput : public HWComponent {
-  public:
-    Binding* binding = NULL;
-  protected:
-    HWInput(const JsonObject& json);
-    HWInput() {}
-};
-
 // Button
-class HWButton : public HWInput {
+class HWButton : public HWComponent {
   public:
     HWButton(const JsonObject& json);
     HWButton() {}
@@ -67,7 +50,7 @@ class HWButton : public HWInput {
 };
 
 // Rotary encoder
-class HWEncoder : public HWInput {
+class HWEncoder : public HWComponent {
   public:
     HWEncoder(const JsonObject& json);
     HWEncoder() {}
@@ -82,14 +65,8 @@ class HWDefinition {
   public:
     HWDefinition(const JsonObject& json);
     HWDefinition() {}
-    int ledCount = 0;
-    int rgbCount = 0;
-    int buttonCount = 0;
-    int encoderCount = 0;
-    HWLEDLight* leds; // Array of LEDs
-    HWRGBLight* rgbs; // Array of RGB LEDs
-    HWButton* buttons; // Array of buttons
-    HWEncoder* encoders; // Array of encoders
+    int size = 0;
+    HWComponent** components;
 };
 
 class LEDIdent {

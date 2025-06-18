@@ -7,17 +7,11 @@ HWComponent::HWComponent(const JsonObject& json) {
   id = json["id"];
 }
 
-HWOutput::HWOutput(const JsonObject& json) : HWComponent(json) {
-}
-
-HWInput::HWInput(const JsonObject& json) : HWComponent(json) {
-}
-
-HWLEDLight::HWLEDLight(const JsonObject& json) : HWOutput(json) {
+HWLEDLight::HWLEDLight(const JsonObject& json) : HWComponent(json) {
   pinMode(pin, OUTPUT);
 }
 
-HWRGBLight::HWRGBLight(const JsonObject& json) : HWOutput(json) {
+HWRGBLight::HWRGBLight(const JsonObject& json) : HWComponent(json) {
   gPin = json["gpin"];
   bPin = json["bpin"];
   r = json["r"];
@@ -31,7 +25,7 @@ HWRGBLight::HWRGBLight(const JsonObject& json) : HWOutput(json) {
   analogWrite(bPin, b);
 }
 
-HWButton::HWButton(const JsonObject& json) : HWInput(json) {
+HWButton::HWButton(const JsonObject& json) : HWComponent(json) {
   detect = json["detect"];
   debounce = json["debounce"];
   button.setPressedState(detect);
@@ -39,27 +33,35 @@ HWButton::HWButton(const JsonObject& json) : HWInput(json) {
   button.attach(pin, INPUT_PULLUP);
 }
 bool HWButton::update() {
-  bool result = button.update();
-  if (binding != NULL) {
-    if (button.pressed() && binding->action1 != NULL) binding->action1->perform();
-    else if (button.released() && binding->action2 != NULL) binding->action2->perform();
+  button.update();
+  if (button.pressed()) {
+    Serial.print(id);
+    Serial.println("p");
+  }
+  else if (button.released()) {
+    Serial.print(id);
+    Serial.println("r");
   }
 
-  return result;
+  return false;
 }
 
-HWEncoder::HWEncoder(const JsonObject& json) : HWInput(json) {
+HWEncoder::HWEncoder(const JsonObject& json) : HWComponent(json) {
   pin2 = json["pin2"];
   encoder = new Encoder(pin, pin2);
 }
 bool HWEncoder::update() {
   long delta = encoder->read();
-  if (delta < 3 && delta > -3) return false; // Delta must be >= |3| to activate, or else it activates 4 times per detent
+  if (delta <= 3 && delta >= -3) return false; // This still isn't quite right
   encoder->readAndReset();
 
-  if (binding != NULL) {
-    if (delta < 0 && binding->action1 != NULL) binding->action1->perform();
-    if (delta > 0 && binding->action2 != NULL) binding->action2->perform();
+  if (delta < 0) {
+    Serial.print(id);
+    Serial.println("ccw");
+  }
+  if (delta > 0) {
+    Serial.print(id);
+    Serial.println("cw");
   }
   lastDelta = delta;
 
@@ -69,34 +71,22 @@ bool HWEncoder::update() {
 HWDefinition::HWDefinition(const JsonObject& json) {
   auto comps = json["components"].as<JsonArray>();
   
-  for (const JsonObject& j : comps) {  
-    String type = j["type"];
-    if (type.equals("led")) ledCount++;
-    else if (type.equals("rgbled")) rgbCount++;
-    else if (type.equals("encoder")) encoderCount++;
-    else if (type.equals("button")) buttonCount++;
-  }
+  size = comps.size();
+  components = new HWComponent*[size];
 
-  leds = new HWLEDLight[ledCount];
-  rgbs = new HWRGBLight[rgbCount];
-  encoders = new HWEncoder[encoderCount];
-  buttons = new HWButton[buttonCount];
-
-  int ledI = 0;
-  int rgbI = 0;
-  int encoderI = 0;
-  int buttonI = 0;
+  int i = 0;
   for (const JsonObject& j : comps) {
-    String type = j["type"];
+    const String& type = j["type"];
     if (type.equals("led")) {
-      leds[ledI++] = HWLEDLight(j);
+      components[i] = new HWLEDLight(j);
     } else if (type.equals("rgbled")) {
-      rgbs[rgbI++] = HWRGBLight(j);
+      components[i] = new HWRGBLight(j);
     } else if (type.equals("encoder")) {
-      encoders[encoderI++] = HWEncoder(j);
+      components[i] = new HWEncoder(j);
     } else if (type.equals("button")) {
-      buttons[buttonI++] = HWButton(j);
+      components[i] = new HWButton(j);
     }
+    i++;
   }
 }
 
