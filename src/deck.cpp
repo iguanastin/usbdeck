@@ -1,5 +1,7 @@
 #include "core_pins.h"
 #include "deck.hpp"
+#include "serial.hpp"
+#include "util.hpp"
 
 
 HWComponent::HWComponent(const JsonObject& json) {
@@ -35,12 +37,14 @@ HWButton::HWButton(const JsonObject& json) : HWComponent(json) {
 bool HWButton::update() {
   button.update();
   if (button.pressed()) {
-    Serial.print(id);
-    Serial.println("p");
+    char bytes[4];
+    splitIntToBytes(id, bytes);
+    sendSerialMessage(SERIAL_BUTTON_DOWN, 4, bytes);
   }
   else if (button.released()) {
-    Serial.print(id);
-    Serial.println("r");
+    char bytes[4];
+    splitIntToBytes(id, bytes);
+    sendSerialMessage(SERIAL_BUTTON_UP, 4, bytes);
   }
 
   return false;
@@ -56,16 +60,17 @@ bool HWEncoder::update() {
   encoder->readAndReset();
 
   if (delta < 0) {
-    Serial.print(id);
-    Serial.println("ccw");
-  }
-  if (delta > 0) {
-    Serial.print(id);
-    Serial.println("cw");
+    char bytes[4];
+    splitIntToBytes(id, bytes);
+    sendSerialMessage(SERIAL_ENCODER_CCW, 4, bytes);
+  } else if (delta > 0) {
+    char bytes[4];
+    splitIntToBytes(id, bytes);
+    sendSerialMessage(SERIAL_ENCODER_CW, 4, bytes);
   }
   lastDelta = delta;
 
-  return delta != 0;
+  return true;
 }
 
 HWDefinition::HWDefinition(const JsonObject& json) {
