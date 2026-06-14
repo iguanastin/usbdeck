@@ -19,19 +19,11 @@ const char* configFilename = "config.json"; // Filename/path to the config file
 
 LittleFS_Program fs; // File store
 
-HWDefinition hw; // Hardware definition (buttons, encoders, lights, etc.)
 bool configLoaded = false; // Is true after a config successfully loads
-
-bool identMode = false; // If board is in ident mode, inputs will send an ident command to the configurator instead of performing default config binding actions
-RGBLEDIdent rgbIdent(3000);
-LEDIdent ledIdent(3000, 250);
 
 elapsedMillis errorLedTimer;
 
 
-void updateInputs();
-void identEncoder(const HWEncoder& encoder, int delta);
-void identButton(const HWButton& button);
 bool writeStringToFile(const char* filepath, const char* bytes, const int length);
 void doSerial();
 void serialMessageHandler(const SerialMessage& msg);
@@ -84,36 +76,12 @@ void loop() {
     errorLedTimer = 0;
   }
 
-  ledIdent.update();
-  rgbIdent.update();
-
-  // Update hardware components
-  for (int i = 0; i < hw.size; i++) {
-    hw.components[i]->update();
-  }
-
   // Handle serial
   doSerial();
-  
 }
 
 
 
-// Send ident request for a specified encoder
-void identEncoder(const HWEncoder& encoder, int delta) {
-  char pinBytes[4];
-  int pin = encoder.pin;
-  if (delta > 0) pin = encoder.pin2;
-  splitIntToBytes(pin, pinBytes);
-  sendSerialMessage(SERIAL_IDENT_ENCODER, 4, pinBytes);
-}
-
-// Send ident request for a specified button
-void identButton(const HWButton& button) {
-  char pinBytes[4];
-  splitIntToBytes(button.pin, pinBytes);
-  sendSerialMessage(SERIAL_IDENT_BUTTON, 4, pinBytes);
-}
 
 // Utility function to write a byte array to a filepath
 bool writeStringToFile(const char* filepath, const char* bytes, const int length) {
@@ -173,9 +141,6 @@ void doSerial() {
         Serial.println(fs.usedSize());
         Serial.print(F("FS Total: "));
         Serial.println(fs.totalSize());
-      } else if (strMatch(buffer + i + 1, "hwstat\n", 7)) {
-        Serial.print(F("Components: "));
-        Serial.println(hw.size);
       }
     }
   }
@@ -225,18 +190,18 @@ void serialMessageHandler(const SerialMessage& msg) {
     sendSerialMessage(SERIAL_RESPOND_IDENTIFY, msg.id, strlen(text), text);
   }
 
-  // Ident LED
-  else if (msg.type == SERIAL_IDENT_LED) {
-    ledIdent.start(joinBytesToInt(msg.data));
+  // // Ident LED
+  // else if (msg.type == SERIAL_IDENT_LED) {
+  //   ledIdent.start(joinBytesToInt(msg.data));
 
-    sendSerialMessage(SERIAL_RESPOND_OK, msg.id);
-  }
+  //   sendSerialMessage(SERIAL_RESPOND_OK, msg.id);
+  // }
 
-  else if (msg.type == SERIAL_IDENT_RGB) {
-    rgbIdent.start(joinBytesToInt(msg.data), joinBytesToInt(msg.data+4), joinBytesToInt(msg.data+8));
+  // else if (msg.type == SERIAL_IDENT_RGB) {
+  //   rgbIdent.start(joinBytesToInt(msg.data), joinBytesToInt(msg.data+4), joinBytesToInt(msg.data+8));
 
-    sendSerialMessage(SERIAL_RESPOND_OK, msg.id);
-  }
+  //   sendSerialMessage(SERIAL_RESPOND_OK, msg.id);
+  // }
 }
 
 // Read config file and apply
@@ -269,7 +234,7 @@ bool readConfigFromFile(File& cfgFile) {
     return false;
   } else {
     // Create hardware definition
-    hw = HWDefinition(doc["hardware"].as<JsonObject>());
+    // hw = HWDefinition(doc["hardware"].as<JsonObject>());
     doc.clear();
     doc.shrinkToFit();
     return true;
