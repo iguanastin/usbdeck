@@ -17,6 +17,19 @@ void Port::fire(float f) {
   fire();
 }
 
+void Port::fireConnections() {
+  for (int i = 0; i < size; ++i) connections[i]->fire();
+}
+void Port::fireConnections(bool b) {
+  for (int i = 0; i < size; ++i) connections[i]->fire(b);
+}
+void Port::fireConnections(int val) {
+  for (int i = 0; i < size; ++i) connections[i]->fire(val);
+}
+void Port::fireConnections(bool f) {
+  for (int i = 0; i < size; ++i) connections[i]->fire(f);
+}
+
 Node::Node(const JsonObject& json, Profile* profile) : name(json["name"]) {
   this->profile = profile;
 }
@@ -50,11 +63,7 @@ SwitchNode::SwitchNode(const JsonObject& json, Profile* profile): Node(json, pro
   outputs = new Port*[]{&pressed};
   numOutputs = 1;
 
-  pressed.onFireBool = [this](bool b) {
-    for (int i = 0; i < pressed.size; ++i) {
-      pressed.connections[i]->fire(b);
-    }
-  };
+  pressed.onFireBool = [this](bool b) { pressed.fireConnections(b); };
   
   button.setPressedState(json["detect"] | true);
   button.interval(json["debounce"] | 5);
@@ -77,3 +86,27 @@ KeyNode::KeyNode(const JsonObject& json, Profile* profile) : Node(json, profile)
     // TODO Press the key
   };
 }
+
+
+LEDNode::LEDNode(const JsonObject& json, Profile* profile) : Node(json, profile),
+                                                            pin(json["pin"]),
+                                                            percent(Port("Percent")) {
+  inputs = new Port*[]{&percent};
+  numInputs = 1;
+  pinMode(pin, OUTPUT);
+  analogWrite(pin, (int)(json["initial"].as<float>()*256));
+  
+  percent.onFireFloat = [this](float f) { analogWrite(pin, (int)(f*256)); };
+}
+
+RGBNode::RGBNode(const JsonObject& json, Profile* profile) : Node(json, profile), pin_r(json["pin_r"]), pin_g(json["pin_g"]), pin_b(json["pin_b"]), r(Port("R")), g(Port("G")), b(Port("B")) {
+  inputs = new Port*[]{&r, &g, &b};
+  numInputs = 3;
+  pinMode(pin_r, OUTPUT);
+  pinMode(pin_g, OUTPUT);
+  pinMode(pin_b, OUTPUT);
+
+  r.onFireFloat = [this](float f) { analogWrite(pin_r, (int)(f*256)); };
+  g.onFireFloat = [this](float f) { analogWrite(pin_g, (int)(f*256)); };
+  b.onFireFloat = [this](float f) { analogWrite(pin_b, (int)(f*256)); };
+};

@@ -22,6 +22,11 @@ class Port {
     void fire(bool);
     void fire(int);
     void fire(float);
+
+    void fireConnections();
+    void fireConnections(bool);
+    void fireConnections(int);
+    void fireConnections(float);
 };
 
 class Profile;
@@ -60,4 +65,20 @@ class KeyNode : public Node {
     Port pressed;
 
     KeyNode(const JsonObject& json, Profile* profile);
+};
+
+class LEDNode : public Node {
+  public:
+    int pin;
+    Port percent;
+
+    LEDNode(const JsonObject& json, Profile* profile);
+};
+
+class RGBNode : public Node {
+  public:
+    int pin_r, pin_g, pin_b;
+    Port r, g, b;
+
+    RGBNode(const JsonObject& json, Profile* profile);
 };

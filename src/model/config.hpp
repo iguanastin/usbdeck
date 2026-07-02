@@ -11,6 +11,7 @@ class Config {
     
     const Profile& activeProfile();
     const int profileCount();
+    void update();
   private:
     Profile* profiles;
     int size;
